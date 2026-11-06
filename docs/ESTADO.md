@@ -15,11 +15,13 @@
 **Pruebas exploratorias con Gemini real** (7 HV raras; detalle en `docs/informe.md` §8): inglés → ENTREVISTA 92.5; habilidades en tabla → se leen bien; negación explícita de React → se respeta; escaneada, vacía o casi vacía → se rechazan antes del LLM.
 
 ## Siguiente
-- **JVarz12:** probar Gmail/Calendar real (falta el cliente OAuth) y llenar el TODO de `docs/informe.md` §8.4.
+- **JVarz12:** reautorizar Google el día antes de la demo (`python -m scripts.autorizar_google`; el token de prueba vence a los 7 días).
 - **Los tres:** ensayar `docs/demo.md`, grabar el video y completar la portada del informe (curso, profesor, nombres completos).
 - **Kevin (opcional):** sumar "maquetador/a" y similares al neutralizador; mensaje "texto insuficiente" para HV casi vacías.
 
 ## Hecho
+- 2026-11-06 · **Gmail + Calendar con Google real**: postulación → Gemini (ENTREVISTA, 100) → decisión → correo e invitación con Meet; auditoría `notificacion_enviada` (informe §8.4).
+- 2026-11-06 · **Sprint 4** fusionado (PRs #16 a #20).
 - 2026-11-06 · **Sprint 3** fusionado (PRs #12 a #15).
 - 2026-11-06 · **Sprint 3**: anonimizador y prueba de sesgo, evaluación en segundo plano, retención, carga, transparencia, accesibilidad y `docs/etica.md`.
 - 2026-11-06 · **Sprint 2** fusionado (PRs #8 a #11): scoring y agente, Gmail/Calendar y panel del reclutador.
@@ -61,4 +63,4 @@
 - El modo agente tarda ~15–27 s por HV.
 
 ## Bloqueos
-- **OAuth de Google (JVarz12):** para probar los correos reales hay que crear el cliente OAuth de escritorio, guardarlo en `backend/credentials.json` y correr `python -m scripts.autorizar_google`.
+- Ninguno.

@@ -265,7 +265,18 @@ Con el anonimizador la igualdad está garantizada por construcción: el LLM reci
 
 Con *mocks*, las pruebas verifican que al aprobar `ENTREVISTA` se crea el evento (siguiente día hábil, 10:00 de Bogotá, 45 min, Meet) y se envía la invitación; que `NO_CONTINUA` envía el correo explicado; y que, si Google no está autorizado o falla, la decisión se conserva y queda en la auditoría (`notificacion_omitida` o `notificacion_fallida`).
 
-<!-- TODO: integración real Gmail/Calendar -->
+**Prueba real (6 de noviembre de 2026).** Con un cliente OAuth de escritorio en modo prueba y la cuenta de Gmail de un integrante, se recorrió el flujo completo por la API pública, con una BD temporal:
+
+| Paso | Resultado |
+|---|---|
+| `POST /postulaciones` con `hv_backend_fuerte_1.pdf` y el correo del integrante como candidato | 201, `en_evaluacion` |
+| Evaluación en segundo plano con Gemini real (modo agente) | `pendiente_revision`, sugerido **ENTREVISTA, 100** (~20 s) |
+| `POST /evaluaciones/1/decision` con `ENTREVISTA` | 200 con `entrevista.inicio` = lunes 9 de nov., 10:00 (−05:00), y un enlace de Meet real |
+| Auditoría | `evaluacion_creada` → `decision` → `notificacion_enviada`, sin errores en el servidor |
+
+La entrevista cayó en el siguiente día hábil (la decisión fue un viernes) y el evento llegó al Calendar con la invitación por correo.
+
+**Lección de configuración:** el primer intento de autorización falló con `Error 403: access_denied`, porque la cuenta no estaba registrada como usuario de prueba de la pantalla de consentimiento. En modo prueba, además, el token vence a los 7 días: hay que reautorizar antes de la demo.
 
 ### Pruebas exploratorias con el agente
 
@@ -337,7 +348,7 @@ Estos hallazgos salieron de las pruebas con Gemini real y de la revisión de có
 | **Latencia del modo agente:** ~15–27 s por HV. | Experiencia del reclutador. | Usar `pipeline` cuando el costo o la latencia importen; procesamiento por lotes. |
 | **`siguiente_horario` no considera festivos colombianos.** | Una entrevista podría caer en festivo. | Calendario de festivos. |
 | **Derechos del titular atendidos a mano;** purga manual; BD y PDF sin cifrar en reposo. | Cumplimiento parcial de la Ley 1581 en un despliegue real. | *Endpoints* para conocer, rectificar y suprimir; purga programada; cifrado. |
-| **Gmail y Calendar sin prueba real** (falta el cliente OAuth). | La notificación solo está verificada con *mocks*. | Completar la prueba real (§8.4). |
+| **OAuth en modo prueba:** el token vence a los 7 días y solo autorizan los usuarios de prueba. | Hay que reautorizar antes de cada demo. | Verificar la app con Google o usar una cuenta de servicio de Google Workspace. |
 | **Marco normativo verificado sin abogado.** | Las citas se confirmaron contra fuentes oficiales, pero sin asesoría jurídica. | En un despliegue real: revisión legal y estudio de impacto de privacidad, porque la selección de personal es un uso de alto riesgo. |
 | **El reclutador puede tener sus propios sesgos.** | El sistema registra y explica, pero no los elimina. | Métricas de contradicción IA–humano por grupo en la auditoría. |
 
