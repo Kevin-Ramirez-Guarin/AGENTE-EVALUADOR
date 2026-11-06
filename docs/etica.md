@@ -5,7 +5,7 @@
 > - [`etica/datos-personales-y-auditoria.md`](etica/datos-personales-y-auditoria.md): Ley 1581, auditoría, retención y seguridad (track Plataforma).
 > - [`etica/transparencia-y-consentimiento.md`](etica/transparencia-y-consentimiento.md): consentimiento, transparencia hacia el candidato y accesibilidad (track Frontend).
 >
-> Las citas normativas marcadas **(por verificar)** no se confirmaron contra la fuente oficial. Revísenlas antes de entregar.
+> Las citas normativas se verificaron contra fuentes oficiales en noviembre de 2026 (ver [Fuentes](#fuentes)). No reemplazan la revisión de un abogado.
 
 ---
 
@@ -25,16 +25,16 @@ Nuestro diseño parte de una regla: **la IA extrae y recomienda, las reglas punt
 | Norma | Qué exige | Cómo lo atendemos |
 |---|---|---|
 | **Constitución, art. 13 y 15** | Igualdad y no discriminación; *habeas data* | Evaluación ciega y derechos del titular en `/como-evaluamos` |
-| **Ley 1581 de 2012** (protección de datos) | Autorización previa, expresa e informada (art. 9); principio de finalidad (art. 4 lit. b); deber de informar (art. 12); datos sensibles con tratamiento restringido (art. 5 y 6) | Casilla obligatoria sin premarcar; texto que explica la finalidad y el uso de IA; no se piden datos sensibles y el anonimizador los quita |
-| **Decreto 1377 de 2013** (compilado en el Decreto 1074 de 2015) **(por verificar)** | Reglamenta la autorización y las políticas de tratamiento | Página `/privacidad`; registro de `consentimiento_at` en la auditoría |
-| **Circular Externa 002 de 2024 de la SIC** (datos personales en sistemas de IA) **(por verificar)** | Necesidad, idoneidad, proporcionalidad; evaluación de impacto de privacidad previa | Minimización (solo se envía a Gemini el texto anonimizado); este documento funciona como evaluación de impacto inicial |
-| **Sentencia T-323 de 2024, Corte Constitucional (por verificar)** | Los sistemas de IA deben respetar el régimen de datos personales | Igual que las anteriores |
-| **Ley 1482 de 2011, modificada por la Ley 1752 de 2015 (por verificar)** | Penaliza actos de discriminación por raza, sexo, origen y otras causas | Controles contra el sesgo (sección 4) |
-| **Ley de IA** | **No hay ley aprobada** a octubre de 2026. Están en trámite el PL 025/2026 Cámara y el PL 065/2026 Senado **(por verificar)** | Seguimos estándares internacionales como referencia |
+| **Ley 1581 de 2012** (protección de datos) | Autorización previa, expresa e informada (art. 3 lit. a y art. 9); principio de finalidad (art. 4 lit. b); deber de informar (art. 12); datos sensibles con tratamiento restringido (art. 5 y 6) | Casilla obligatoria sin premarcar; texto que explica la finalidad y el uso de IA; no se piden datos sensibles y el anonimizador los quita |
+| **Decreto 1377 de 2013** (compilado en el Decreto 1074 de 2015, cap. 2.2.2.25) | Reglamenta la autorización (el silencio no vale como autorización, art. 7), el contenido mínimo de la política de tratamiento (art. 13), el tiempo de conservación (art. 11) y la transmisión a encargados (arts. 24 y 25) | Página `/privacidad`; registro de `consentimiento_at` en la auditoría |
+| **Circular Externa 002 de 2024 de la SIC** (21 de agosto de 2024, datos personales en sistemas de IA) | Antes de usar IA, ponderar idoneidad, necesidad, razonabilidad y proporcionalidad; si hay duda sobre el daño, abstenerse o tomar medidas preventivas; gestionar riesgos y hacer un estudio de impacto de privacidad si el riesgo es alto; datos veraces y completos; seguridad auditable; garantizar los derechos del titular | Minimización (solo se envía a Gemini el texto anonimizado); este documento funciona como evaluación de impacto inicial |
+| **Sentencia T-323 de 2024, Corte Constitucional** (2 de agosto de 2024) | Un juez usó ChatGPT en una tutela; la Corte lo admitió porque no sustituyó su razonamiento y fijó criterios para el uso de IA: transparencia, responsabilidad, privacidad, no sustitución de la racionalidad humana, control humano y prevención de sesgos. Trata la función judicial, no la selección de personal: la citamos por analogía | Humano en el bucle, explicación por criterio y ningún dato de identidad al LLM |
+| **Ley 1482 de 2011, modificada por la Ley 1752 de 2015** (arts. 134A y 134B del Código Penal) | Penaliza los actos de discriminación por raza, nacionalidad, sexo u orientación sexual, discapacidad y demás razones de discriminación; el hostigamiento añade etnia, religión e ideología | Controles contra el sesgo (sección 4) |
+| **Ley de IA** | **No hay ley aprobada** a noviembre de 2026. El proyecto del Gobierno (PL 043/2025 Senado – 324/2025 Cámara) se archivó al cerrar el cuatrienio. Están radicados el PL 025/2026 Cámara (21 de julio de 2026; en septiembre seguía pendiente la ponencia para primer debate en la Comisión Sexta) y el PL 065/2026 Senado; en las fuentes consultadas ninguno ha superado el primer debate | Seguimos estándares internacionales como referencia |
 
 ### Referentes internacionales
 - **RGPD (UE), art. 22:** derecho a no ser objeto de decisiones basadas *únicamente* en tratamiento automatizado. Lo cumplimos con el humano en el bucle.
-- **EU AI Act, Anexo III, punto 4:** los sistemas de reclutamiento y selección son de **alto riesgo**. Exige gestión de riesgos, calidad de datos, transparencia, supervisión humana y registro. Las obligaciones de alto riesgo se aplazaron al 2 de diciembre de 2027 (Digital Omnibus) **(por verificar)**. Lo usamos como lista de chequeo de diseño.
+- **EU AI Act, Anexo III, punto 4:** los sistemas de reclutamiento y selección son de **alto riesgo**. Exige gestión de riesgos, calidad de datos, transparencia, supervisión humana y registro. Las obligaciones de alto riesgo del Anexo III se aplazaron del 2 de agosto de 2026 al 2 de diciembre de 2027 por el Reglamento (UE) 2026/1744 (Digital Omnibus sobre IA, DO del 24 de julio de 2026). Lo usamos como lista de chequeo de diseño.
 
 ## 3. Riesgo → control → evidencia
 
@@ -64,7 +64,7 @@ Nuestro diseño parte de una regla: **la IA extrae y recomienda, las reglas punt
 
 **Diseño:**
 - Se tomó una misma HV de rango medio para Backend Jr y se crearon 8 variantes. Cada variante cambia **un solo factor** (nombre ×2, género, origen ×2 y edad), y hay una combinada.
-- Cada variante pasó 3 veces por Gemini (`gemini-3.1-flash-lite`), en dos modos:
+- Cada variante pasó 3 veces por Gemini (`gemini-3.1-flash-lite`, con `MODO_EVALUACION=pipeline` para abaratar las corridas; usa la misma extracción y el mismo puntaje que el modo agente), en dos modos:
   - **con** el anonimizador (el sistema real);
   - **sin** él (contraste: el LLM ve la identidad).
 
@@ -86,9 +86,27 @@ Nuestro diseño parte de una regla: **la IA extrae y recomienda, las reglas punt
 - **Es un sistema determinístico sobre un LLM no determinístico.** La extracción varía entre corridas, lo mitigamos pero no lo eliminamos. Por eso la decisión es humana.
 - **Sin autenticación.** El panel es público en la demo y el nombre del reclutador lo declara el cliente, así que la auditoría se puede suplantar. En producción se necesita inicio de sesión.
 - **El canal para ejercer derechos es de demostración** (empresa ficticia).
-- **Gemini es un tercero** (Google Cloud). En producción hace falta revisar la transferencia y el encargo del tratamiento de datos **(por verificar)**.
+- **Gemini es un tercero** (Google Cloud, vía Vertex AI). Para la Ley 1581, Google actúa como **encargado** y enviarle datos es una *transmisión*: no requiere informar al titular ni pedir otra autorización si hay un contrato de transmisión (arts. 24 y 25 del Decreto 1377). El anexo de tratamiento de datos de Google Cloud lo declara *processor* y Google se compromete a no entrenar con los datos. En producción hay que revisar que ese anexo cubra lo que exige el art. 25 y fijar una región. Si se tratara de una transferencia, aplicaría el art. 26 de la Ley 1581; Estados Unidos está en la lista de países con nivel adecuado de la SIC (Circular Externa 005 de 2017).
 - **El reclutador puede tener sus propios sesgos.** El sistema registra y explica, pero no los elimina.
 
 ## 7. Conclusión
 
 El MVP muestra que se puede usar IA generativa en selección **sin delegarle la decisión**. La IA ahorra lectura y estructura la evidencia, las reglas hacen el puntaje auditable y la persona conserva el juicio y la responsabilidad. La evidencia empírica (prueba de ceguera, contrafactual con Gemini real, evals contra *prompt injection*) respalda las afirmaciones de este documento, y los límites quedan declarados.
+
+## Fuentes
+
+Consultadas el 6 de noviembre de 2026.
+
+- Ley 1581 de 2012: https://normativa.colpensiones.gov.co/colpens/docs/ley_1581_2012.htm
+- Decreto 1377 de 2013, con notas de compilación en el Decreto 1074 de 2015: https://normativa.colpensiones.gov.co/colpens/docs/decreto_1377_2013.htm
+- Decreto 090 de 2018 (quién debe inscribirse en el RNBD): https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=85039
+- Circular Externa 002 de 2024 de la SIC (PDF escaneado): https://sedeelectronica.sic.gov.co/sites/default/files/normativa/Circular%20Externa%20No.%20002%20del%2021%20de%20agosto%20de%202024.pdf. Como el PDF oficial es una imagen, el contenido se contrastó con https://www.perezllorca.com/es-co/actualidad/boletin/conoce-los-lineamientos-para-el-uso-de-datos-personales-a-traves-de-sistemas-de-inteligencia-artificial/ y https://www.cerlatam.com/normatividad/sic-circular-externa-002-de-2024/
+- Circular Externa 005 de 2017 de la SIC (países con nivel adecuado, Diario Oficial 50.321): https://operaciones.colombiacompra.gov.co/sites/cce_public/files/cce_informe_seguimiento/superindustria-circularexterna-2017-n0000005_20170810_1.pdf
+- Sentencia T-323 de 2024: https://www.corteconstitucional.gov.co/relatoria/2024/T-323-24.htm
+- Ley 1752 de 2015 (modifica la Ley 1482 de 2011): https://normativa.colpensiones.gov.co/colpens/docs/ley_1752_2015.htm
+- PL 025/2026 Cámara, radicación: https://www.camara.gov.co/wp-content/uploads/2026/07/proyectos-ley/documentos/proyecto-36127/P.L.025-2026SC-INTELIGENCIA-ARTIFICIAL.pdf y ponencia para primer debate: https://www.camara.gov.co/wp-content/uploads/2026/09/proyectos-ley/publicaciones/proyecto-36127/PPD-PL-025-26C-CON-FIRMAS.pdf
+- PL 065/2026 Senado: https://leyes.senado.gov.co/p-ley/2026-2027/PL%20065-2026%20-%20REGULACION%20IA.pdf
+- RGPD, art. 22: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+- EU AI Act (Reglamento (UE) 2024/1689), Anexo III: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
+- Digital Omnibus sobre IA (Reglamento (UE) 2026/1744): https://eur-lex.europa.eu/eli/reg/2026/1744/oj
+- Google Cloud, anexo de tratamiento de datos: https://cloud.google.com/terms/data-processing-addendum y gobernanza de datos en Vertex AI: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/data-governance

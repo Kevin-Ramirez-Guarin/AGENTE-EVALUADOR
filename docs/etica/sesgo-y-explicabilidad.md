@@ -22,7 +22,7 @@ El pipeline completo es: `extraer_texto_pdf` → `anonimizar(texto, identidad)` 
 
 **Cómo leerlo.** Con el anonimizador el texto que recibe el LLM es idéntico en todas las variantes (sección 2), así que la diferencia que aparezca mide el ruido del LLM, no sesgo. El contraste válido es contra `--sin-anonimizar` (`resultados_sin_anonimizar.md`): ahí el LLM sí ve la identidad, y lo que la diferencia supere al ruido es atribuible al factor que cambió en esa fila.
 
-Resultados: _(los agrega Kevin tras correr el script)_.
+Resultados (Gemini real, 8 variantes × 3 corridas): **71,7 en todas, con y sin anonimizador**; diferencia máxima 0,0 y ruido del LLM 0,0. Detalle en [`../sesgo/resultados.md`](../sesgo/resultados.md), [`../sesgo/resultados_sin_anonimizar.md`](../sesgo/resultados_sin_anonimizar.md) y en `docs/etica.md` §5.
 
 ## 4. Explicabilidad
 
