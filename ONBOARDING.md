@@ -36,7 +36,7 @@ El eje ético es tan importante como el código: evaluación ciega, explicación
 ```bash
 git clone https://github.com/Kevin-Ramirez-Guarin/AGENTE-EVALUADOR.git
 cd AGENTE-EVALUADOR
-git switch feature/setup-base   # mientras no esté fusionado en main; después usa main
+git switch main && git pull
 ```
 
 **Backend:**
@@ -80,7 +80,7 @@ Cada persona usa **su propia key**. Nadie comparte la suya por chat ni la sube a
 2. Abre Claude Code **en la carpeta del repo** (`AGENTE-EVALUADOR`), no en una carpeta superior. Si no, no carga `CLAUDE.md` ni los permisos.
 3. Antes de cada sesión, trae lo último:
    ```bash
-   git switch main && git pull     # o feature/setup-base mientras no se fusione
+   git switch main && git pull
    ```
 4. **Primer mensaje de cada sesión.** Copia y adapta:
 
@@ -102,7 +102,7 @@ Cada persona usa **su propia key**. Nadie comparte la suya por chat ni la sube a
   feature/añadir-pdf
 
   El backend ya recibe la hoja de vida en PDF y saca su texto con pypdf.
-  Si el PDF viene escaneado, lo marcamos para que Gemini lo lea directo.
+  Si el PDF viene escaneado y no trae texto, se rechaza con un mensaje claro.
   ```
 - **TDD:** el commit `feature/test-…` va primero (la prueba falla) y después el de la implementación.
 - **Pruebas:** unitarias, caja negra, evals del agente (`pytest -m llm`), e2e con Playwright y carga con Locust (`PLAN.md` §11).
