@@ -6,7 +6,7 @@ const PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2
 test('el candidato se postula y ve el mensaje de éxito sin puntaje', async ({ page }) => {
   await page.goto('/vacantes')
   await expect(page.getByRole('heading', { name: /backend jr/i })).toBeVisible()
-  await page.getByRole('link', { name: /aplicar/i }).click()
+  await page.getByRole('link', { name: /aplicar a .*backend jr/i }).click()
 
   await page.getByLabel('Nombre completo').fill('Ana Pérez')
   await page.getByLabel('Correo electrónico').fill('ana@example.com')
