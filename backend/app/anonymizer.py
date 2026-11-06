@@ -109,9 +109,18 @@ PRONOMBRE = _c(r"\b(?:ellas|ellos|ella|él)\b", re.IGNORECASE)  # sobre el origi
 _COLAPSO_PERSONA = _c(r"\[PERSONA\](?:[ \t]+(?:de|del|la|las|los|y|e))*(?:[ \t]+\[PERSONA\])+")
 
 
+def _frase_a_regex(frase: str) -> str:
+    palabras = [r"(?:de|en)" if w == "\\1" else re.escape(w) for w in plegar(frase).split()]
+    return r"\s+".join(palabras)
+
+
+# Formas neutras que produce el propio anonimizador ("formación técnica en"): no cuentan como género.
+_NEUTRAS = _c("|".join(_frase_a_regex(r) for _, r in GENERO if r))
+
+
 def contiene_genero(texto: str) -> list[str]:
-    """Fragmentos con marca de género de la lista (para pruebas y evals)."""
-    plano = plegar(texto)
+    """Fragmentos con marca de género de la lista (para pruebas y evals); ignora las formas neutras."""
+    plano = _NEUTRAS.sub(lambda m: " " * len(m.group()), plegar(texto))
     hallados = [m.group() for patron, _ in GENERO for m in patron.finditer(plano)]
     return hallados + [m.group() for m in PRONOMBRE.finditer(texto)]
 
