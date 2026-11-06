@@ -186,7 +186,7 @@ const MOCK_DETALLE_13: EvaluacionDetalle = {
 const MOCK_DETALLES = [MOCK_DETALLE_12, MOCK_DETALLE_13]
 const MOCK_ENTREVISTA = { inicio: '2026-11-09T10:00:00-05:00', meet_link: 'https://meet.google.com/xxx-xxxx-xxx' }
 
-const useMocks = () => import.meta.env.VITE_USE_MOCKS === 'true'
+const mocksActivos = () => import.meta.env.VITE_USE_MOCKS === 'true'
 const baseUrl = () => import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -199,12 +199,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getVacantes(): Promise<Vacante[]> {
-  if (useMocks()) return MOCK_VACANTES
+  if (mocksActivos()) return MOCK_VACANTES
   return request('/vacantes')
 }
 
 export async function getVacante(id: string): Promise<Vacante> {
-  if (useMocks()) {
+  if (mocksActivos()) {
     const v = MOCK_VACANTES.find((m) => m.id === id)
     if (!v) throw new ApiError(404, 'Vacante no encontrada')
     return v
@@ -213,7 +213,7 @@ export async function getVacante(id: string): Promise<Vacante> {
 }
 
 export async function enviarPostulacion(input: PostulacionInput): Promise<PostulacionCreada> {
-  if (useMocks()) return MOCK_POSTULACION
+  if (mocksActivos()) return MOCK_POSTULACION
   const form = new FormData()
   form.append('vacante_id', input.vacante_id)
   form.append('nombre', input.nombre)
@@ -224,7 +224,7 @@ export async function enviarPostulacion(input: PostulacionInput): Promise<Postul
 }
 
 export async function getEvaluaciones(f: FiltroEvaluaciones = {}): Promise<EvaluacionResumen[]> {
-  if (useMocks()) {
+  if (mocksActivos()) {
     const filas = MOCK_DETALLES.filter((d) => !f.vacante_id || d.vacante_id === f.vacante_id).map((d) => ({
       id: d.id,
       vacante_id: d.vacante_id,
@@ -245,7 +245,7 @@ export async function getEvaluaciones(f: FiltroEvaluaciones = {}): Promise<Evalu
 }
 
 export async function getEvaluacion(id: number): Promise<EvaluacionDetalle> {
-  if (useMocks()) {
+  if (mocksActivos()) {
     const d = MOCK_DETALLES.find((m) => m.id === id)
     if (!d) throw new ApiError(404, 'Evaluación no encontrada')
     return d
@@ -254,7 +254,7 @@ export async function getEvaluacion(id: number): Promise<EvaluacionDetalle> {
 }
 
 export async function decidir(id: number, input: DecisionInput): Promise<DecisionRespuesta> {
-  if (useMocks()) {
+  if (mocksActivos()) {
     return {
       id,
       veredicto_final: input.veredicto,

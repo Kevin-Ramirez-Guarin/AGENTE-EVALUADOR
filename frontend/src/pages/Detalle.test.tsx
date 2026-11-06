@@ -93,7 +93,7 @@ describe('Detalle', () => {
 
   it('por criterio muestra barra con texto, peso, cumplido, faltante, evidencia y nota', async () => {
     await setup()
-    const barra = screen.getByRole('meter', { name: /tecnico/i })
+    const barra = screen.getByRole('meter', { name: /técnico/i })
     expect(barra).toHaveAttribute('aria-valuenow', '88')
     expect(barra).toHaveAttribute('aria-valuetext', '88 de 100')
     for (const t of ['cumple-tecnico', 'falta-tecnico', 'evid-tecnico', 'nota-tecnico', 'cumple-experiencia']) {

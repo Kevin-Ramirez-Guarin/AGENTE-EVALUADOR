@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -70,7 +70,9 @@ describe('Panel', () => {
 
     vi.mocked(api.getEvaluaciones).mockResolvedValue(Array.from({ length: 10 }, (_, i) => fila({ id: i + 1 })))
     await user.selectOptions(screen.getByLabelText('Vacante'), 'backend-jr')
-    await user.click(await screen.findByRole('button', { name: /siguiente/i }))
+    const siguiente = screen.getByRole('button', { name: /siguiente/i })
+    await waitFor(() => expect(siguiente).toBeEnabled())
+    await user.click(siguiente)
     expect(api.getEvaluaciones).toHaveBeenLastCalledWith({ vacante_id: 'backend-jr', limit: 10, offset: 10 })
   })
 
