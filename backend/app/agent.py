@@ -3,6 +3,7 @@
 Uso (desde backend/): python -m app.agent ruta.pdf
 """
 import argparse
+import logging
 import re
 from io import BytesIO
 
@@ -14,6 +15,12 @@ from app.llm import get_llm
 from app.models import PerfilCandidato
 
 MIN_CARACTERES_UTILES = 50
+MAX_CARACTERES_HV = 20_000  # tope del texto enviado al LLM
+MAGIC_PDF = b"%PDF"
+VENTANA_MAGIC_BYTES = 1024  # la especificación permite basura antes de la cabecera
+ETIQUETA_HV = re.compile(r"<\s*/?\s*hoja_de_vida\s*>", re.IGNORECASE)
+
+logger = logging.getLogger(__name__)
 
 PROMPT_SISTEMA = """\
 Eres un asistente de selección de personal. Extrae el perfil del candidato a partir de la hoja de vida (HV).
@@ -36,7 +43,7 @@ class PdfSinTextoError(ValueError):
 
 
 def extraer_texto_pdf(pdf_bytes: bytes) -> str:
-    if not pdf_bytes.startswith(b"%PDF"):
+    if MAGIC_PDF not in pdf_bytes[:VENTANA_MAGIC_BYTES]:
         raise PdfInvalidoError("El archivo no es un PDF (faltan los bytes %PDF).")
     try:
         texto = "\n".join(p.extract_text() or "" for p in PdfReader(BytesIO(pdf_bytes)).pages)
@@ -49,6 +56,10 @@ def extraer_texto_pdf(pdf_bytes: bytes) -> str:
 
 def extraer_perfil(texto: str, llm=None) -> PerfilCandidato:
     llm = llm or get_llm()
+    if len(texto) > MAX_CARACTERES_HV:
+        logger.warning("Texto de HV recortado de %d a %d caracteres", len(texto), MAX_CARACTERES_HV)
+        texto = texto[:MAX_CARACTERES_HV]
+    texto = ETIQUETA_HV.sub("[hoja_de_vida]", texto)
     mensajes = [
         SystemMessage(PROMPT_SISTEMA),
         HumanMessage(f"<hoja_de_vida>\n{texto}\n</hoja_de_vida>"),
@@ -64,7 +75,7 @@ def verificar_evidencias(perfil: PerfilCandidato, texto: str) -> list[str]:
     """Nombres de las habilidades cuya evidencia no aparece literalmente en la HV."""
     base = _normalizar(texto)
     habilidades = perfil.habilidades_tecnicas + perfil.habilidades_blandas
-    return [h.nombre for h in habilidades if _normalizar(h.evidencia) not in base]
+    return [h.nombre for h in habilidades if not (ev := _normalizar(h.evidencia)) or ev not in base]
 
 
 def main(argv: list[str] | None = None) -> None:
