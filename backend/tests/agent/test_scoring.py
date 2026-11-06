@@ -221,6 +221,64 @@ def test_hv_backend_fuerte_2_sin_la_palabra_python_cumple_por_sus_frameworks():
     assert res.cumple_obligatorios and res.veredicto_sugerido == Veredicto.ENTREVISTA
 
 
+# --- revisión: límites de palabra, compuestos, idiomas, redondeo, evidencias ----------------
+@pytest.mark.parametrize("pedido,texto,cumple", [
+    ("Java", "Programación en JavaScript", False), ("Java", "Backend en Java y Spring", True),
+    ("JavaScript", "Java con Spring", False), ("SQL", "Bases NoSQL con MongoDB", False),
+    ("SQL", "Mongo (no-sql)", False), ("SQL", "consultas SQL avanzadas", True),
+])
+def test_limites_de_palabra(pedido, texto, cumple):
+    v = vacante(requisitos_obligatorios=[pedido])
+    assert evaluar(perfil([hab("Skill", texto)]), v).cumple_obligatorios is cumple
+
+
+def test_terminos_compuestos_conocidos_no_se_dividen_por_barra():
+    v = vacante(requisitos_obligatorios=["CI/CD"])
+    assert not evaluar(perfil([hab("CI", "Integración continua CI en GitLab")]), v).cumple_obligatorios
+    assert not evaluar(perfil([hab("CD", "entrega CD manual")]), v).cumple_obligatorios
+    assert evaluar(perfil([hab("DevOps", "pipelines CI/CD con GitHub Actions")]), v).cumple_obligatorios
+
+
+@pytest.mark.parametrize("nombre", ["inglés", "English", "ingles", "INGLÉS"])
+def test_idiomas_normaliza_el_nombre(nombre):
+    v = vacante(idiomas=[{"idioma": "inglés", "nivel": "B1"}])
+    assert evaluar(perfil(["Python"], idiomas=[(nombre, "B2")]), v).puntajes_por_criterio["idiomas"] == 100
+
+
+def test_nivel_de_vacante_ilegible_es_error_de_configuracion():
+    v = vacante(idiomas=[{"idioma": "inglés", "nivel": "intermedio"}])
+    with pytest.raises(ValueError, match="nivel"):
+        evaluar(perfil(["Python"]), v)
+
+
+def test_vacantes_json_tiene_niveles_de_idioma_validos():
+    from app.scoring import _nivel_mcer
+    assert all(_nivel_mcer(i.nivel) >= 0 for v in VACANTES for i in v.idiomas)
+
+
+def test_nivel_ilegible_del_candidato_cuenta_como_no_cumplido_y_avisa(caplog):
+    v = vacante(idiomas=[{"idioma": "inglés", "nivel": "B1"}])
+    with caplog.at_level("WARNING", logger="app.scoring"):
+        res = evaluar(perfil(["Python"], idiomas=[("inglés", "fluido")]), v)
+    assert res.puntajes_por_criterio["idiomas"] == 0
+    assert any("fluido" in r.message for r in caplog.records)
+
+
+def test_redondeo_solo_al_final_74_95_sube_a_entrevista():
+    # peso 0.5 experiencia (89.94 % -> se muestra 89.9) + 0.5 educación (60 %): total sin redondear 74.97
+    pesos = {"tecnico": 0, "experiencia": 0.5, "blandas": 0, "educacion": 0.5, "idiomas": 0}
+    v = vacante(experiencia_min_anios=100, nivel_educativo_min="posgrado", pesos=pesos)
+    res = evaluar(perfil(["Python"], anios=89.94, edu="tecnologo"), v)
+    assert res.puntaje_total == 75.0 and res.veredicto_sugerido == Veredicto.ENTREVISTA
+    assert crit(res, "experiencia").puntaje == 89.9
+
+
+def test_evidencias_se_recortan_a_200_caracteres():
+    larga = "x " * 300 + "Python"
+    ev = crit(evaluar(perfil([hab("Python", larga)]), vacante()), "tecnico").evidencias[0]
+    assert len(ev) <= 200
+
+
 def test_vacantes_reales_backend_fuerte():
     p = perfil(["Python", "SQL", "Git", "Docker", "Django", "pytest testing"], blandas=["Trabajo en equipo"],
                anios=3, edu="tecnologo", idiomas=[("inglés", "B1")])
