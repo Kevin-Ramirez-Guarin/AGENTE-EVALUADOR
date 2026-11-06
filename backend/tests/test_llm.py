@@ -11,7 +11,9 @@ def test_get_llm_sin_key_falla_claro(monkeypatch):
 
 
 def test_get_llm_construye_sin_red(monkeypatch):
+    monkeypatch.setattr(config, "load_dotenv", lambda *a, **k: None)
     monkeypatch.setenv("GEMINI_API_KEY", "clave-falsa")
+    monkeypatch.setenv("GEMINI_MODEL", "modelo-de-prueba")
     modelo = llm.get_llm()
     assert modelo.vertexai is True
-    assert modelo.model.endswith(config.get_model())
+    assert modelo.model.endswith("modelo-de-prueba")
