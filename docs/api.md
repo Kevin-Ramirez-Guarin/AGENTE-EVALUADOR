@@ -126,10 +126,10 @@ Cuerpo:
 Los correos y el evento salen después de guardar la decisión: `ENTREVISTA` agenda (siguiente día hábil 10:00, 45 min, Meet) y envía invitación; `NO_CONTINUA` envía un correo con explicación breve por criterio; `REVISION_HUMANA` no envía nada. `entrevista` es `null` si el veredicto no es `ENTREVISTA`, si Google no está autorizado (auditoría `notificacion_omitida`) o si falla (la decisión se mantiene; auditoría `notificacion_fallida`). `motivo` máx. 1000 caracteres y `reclutador` 1-100 (lo declara el cliente; sin autenticación por ahora). Errores: 404 evaluación inexistente; 422 falta motivo; 409 si el estado no es `pendiente_revision` (ya decidida, `en_evaluacion` o `error_evaluacion`).
 
 ## POST /evaluaciones/{id}/reintentar  (implementada)
-Vuelve a programar en segundo plano una evaluación en `error_evaluacion` (usa el PDF conservado). Sin cuerpo.
+Vuelve a programar en segundo plano una evaluación en `error_evaluacion` o atascada en `en_evaluacion` por más de 10 minutos (usa el PDF conservado). Sin cuerpo. Al arrancar el backend, las `en_evaluacion` con más de 10 minutos pasan a `error_evaluacion` con `error: "interrumpida"`.
 
 202:
 ```json
 { "id": 12, "estado": "en_evaluacion" }
 ```
-Errores: 404 no existe; 409 si no está en `error_evaluacion`.
+Errores: 404 no existe; 409 en cualquier otro caso.

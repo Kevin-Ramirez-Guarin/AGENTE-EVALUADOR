@@ -6,14 +6,18 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import get_engine
+from sqlmodel import Session
+
+from app.db import get_engine, marcar_interrumpidas
 from app.models import Vacante
 
 VACANTES_PATH = Path(__file__).resolve().parent.parent / "data" / "vacantes.json"
 
 @asynccontextmanager
 async def lifespan(_app):
-    get_engine()  # crea las tablas al arrancar, antes de atender peticiones concurrentes
+    engine = get_engine()  # crea las tablas al arrancar, antes de atender peticiones concurrentes
+    with Session(engine) as session:
+        marcar_interrumpidas(session)
     yield
 
 

@@ -3,18 +3,19 @@ import json
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import NoReturn
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import case, update
+from sqlalchemy import and_, case, or_, update
 from sqlmodel import Session, select
 
 from app.agent import PdfInvalidoError, PdfSinTextoError, extraer_texto_pdf
 from app.correos import correo_invitacion, correo_no_continua
-from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_engine, get_session
+from app.db import (MINUTOS_EVALUACION_ATASCADA, Auditoria, Candidato, Evaluacion,
+                    Postulacion, get_engine, get_session)
 from app.evaluador import Evaluador, get_evaluador
 from app.google_apis import siguiente_horario
 from app.models import Veredicto
@@ -75,6 +76,15 @@ def _persistir(session: Session, uploads: Path, contenido: bytes, vacante_id: st
         raise
 
 
+def _marcar_error(session: Session, ev: Evaluacion, vacante_id: str, exc: Exception) -> None:
+    # Solo el tipo de la excepción: sin trazas ni datos personales.
+    ev.estado, ev.error = "error_evaluacion", f"Falló la evaluación ({type(exc).__name__})"
+    _auditar(session, "evaluacion_fallida", ev.id,
+             {"vacante_id": vacante_id, "error": type(exc).__name__})
+    session.add(ev)
+    session.commit()
+
+
 def evaluar_en_segundo_plano(evaluacion_id: int, evaluador: Evaluador, uploads: Path) -> None:
     """Corre fuera de la petición, con su propia sesión; nunca lanza (el fallo queda en la fila)."""
     with Session(get_engine()) as session:
@@ -87,12 +97,6 @@ def evaluar_en_segundo_plano(evaluacion_id: int, evaluador: Evaluador, uploads: 
             pdf = (uploads / post.pdf_path).read_bytes()
             perfil, resultado = evaluador(
                 pdf, vacante, identidad={"nombre": cand.nombre, "email": cand.email})
-        except Exception as exc:
-            # Solo el tipo de la excepción: sin trazas ni datos personales.
-            ev.estado, ev.error = "error_evaluacion", f"Falló la evaluación ({type(exc).__name__})"
-            _auditar(session, "evaluacion_fallida", ev.id,
-                     {"vacante_id": vacante_id, "error": type(exc).__name__})
-        else:
             ev.puntaje_total = resultado.puntaje_total
             ev.perfil = perfil.model_dump(mode="json")
             ev.resultado = resultado.model_dump(mode="json")
@@ -102,8 +106,15 @@ def evaluar_en_segundo_plano(evaluacion_id: int, evaluador: Evaluador, uploads: 
                      {"vacante_id": vacante_id, "veredicto_sugerido": ev.veredicto_ia,
                       "puntaje_total": ev.puntaje_total,
                       "consentimiento_at": post.consentimiento_at.isoformat()})
-        session.add(ev)
-        session.commit()
+            session.add(ev)
+            session.commit()
+            return
+        except Exception as exc:
+            session.rollback()
+            error = exc
+    # Sesión nueva: la anterior pudo quedar inservible (p. ej. falló el commit del resultado).
+    with Session(get_engine()) as session:
+        _marcar_error(session, session.get(Evaluacion, evaluacion_id), vacante_id, error)
 
 
 # Función síncrona: FastAPI la corre en un hilo, así el I/O no bloquea el event loop.
@@ -184,14 +195,18 @@ def reintentar(evaluacion_id: int, background: BackgroundTasks,
     ev = session.get(Evaluacion, evaluacion_id)
     if ev is None:
         raise HTTPException(404, "Evaluación no encontrada")
-    # UPDATE condicional: un doble clic no programa dos evaluaciones.
+    # UPDATE condicional: un doble clic no programa dos evaluaciones. Se admite también
+    # en_evaluacion si lleva más de MINUTOS_EVALUACION_ATASCADA (la tarea se perdió).
+    ahora = datetime.now(timezone.utc)
+    atascada = and_(Evaluacion.estado == "en_evaluacion", Evaluacion.evaluacion_iniciada_at
+                    < ahora - timedelta(minutes=MINUTOS_EVALUACION_ATASCADA))
     res = session.connection().execute(
         update(Evaluacion).where(Evaluacion.id == evaluacion_id,
-                                 Evaluacion.estado == "error_evaluacion")
-        .values(estado="en_evaluacion", error=None))
+                                 or_(Evaluacion.estado == "error_evaluacion", atascada))
+        .values(estado="en_evaluacion", error=None, evaluacion_iniciada_at=ahora))
     session.commit()
     if res.rowcount == 0:
-        raise HTTPException(409, "Solo se reintentan evaluaciones en error")
+        raise HTTPException(409, "Solo se reintentan evaluaciones en error o atascadas")
     background.add_task(evaluar_en_segundo_plano, evaluacion_id, evaluador, uploads)
     return {"id": evaluacion_id, "estado": "en_evaluacion"}
 
