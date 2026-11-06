@@ -58,7 +58,13 @@ describe('ComoEvaluamos', () => {
     setup()
     expect(screen.getByText(/la ia solo extrae información y sugiere/i)).toBeInTheDocument()
     expect(screen.getByText(/una persona decide/i)).toBeInTheDocument()
-    expect(screen.getByText(/nombre, género, edad y origen se ocultan/i)).toBeInTheDocument()
+    expect(screen.getByText(/quitamos tus datos de identificación y contacto \(nombre, correo, teléfono, documento, edad, estado civil y origen\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/neutralizamos las palabras que revelan el género/i)).toBeInTheDocument()
+  })
+
+  it('aclara que el correo de contacto es un canal de demostración', () => {
+    setup()
+    expect(screen.getByText(/canal de demostración.*proyecto académico.*empresa ficticia/i)).toBeInTheDocument()
   })
 
   it('lista los derechos de la Ley 1581 y el correo de contacto', () => {

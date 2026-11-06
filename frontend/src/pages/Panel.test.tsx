@@ -124,6 +124,12 @@ describe('Panel', () => {
     expect(filas[3]).toHaveTextContent('Decidida')
   })
 
+  it('un estado desconocido no rompe el panel y se muestra tal cual', async () => {
+    vi.mocked(api.getEvaluaciones).mockResolvedValue([fila({ id: 1, estado: 'archivada' as api.EstadoEvaluacion })])
+    setup()
+    expect(await screen.findByRole('table')).toHaveTextContent('archivada')
+  })
+
   it('el botón Actualizar vuelve a pedir la página actual', async () => {
     const user = setup()
     await screen.findByRole('table')
@@ -183,6 +189,18 @@ describe('Panel: refresco automático', () => {
     await avanzar(5000)
     expect(api.getEvaluaciones).toHaveBeenLastCalledWith({ vacante_id: 'frontend-jr', limit: 11, offset: 10 })
     expect(screen.getByRole('table')).toBeInTheDocument()
+  })
+
+  it('un error transitorio del refresco no reemplaza las filas ya cargadas', async () => {
+    render(<MemoryRouter><Panel /></MemoryRouter>)
+    await flush()
+    vi.mocked(api.getEvaluaciones).mockRejectedValue(new Error('boom'))
+    await avanzar(5000)
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    vi.mocked(api.getEvaluaciones).mockResolvedValue([enCurso])
+    await avanzar(5000)
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(3)
   })
 
   it('limpia el intervalo al desmontar', async () => {

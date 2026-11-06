@@ -220,6 +220,20 @@ describe('Detalle', () => {
       expect(await screen.findByText(/la ia está analizando/i)).toBeInTheDocument()
     })
 
+    it('un error del refresco automático no reemplaza la página y se sigue refrescando', async () => {
+      vi.useFakeTimers()
+      vi.mocked(api.getEvaluacion).mockResolvedValue(enCurso)
+      render(<MemoryRouter initialEntries={['/panel/12']}><Routes><Route path="/panel/:id" element={<Detalle />} /></Routes></MemoryRouter>)
+      await act(() => vi.advanceTimersByTimeAsync(0))
+      vi.mocked(api.getEvaluacion).mockRejectedValue(new Error('boom'))
+      await act(() => vi.advanceTimersByTimeAsync(5000))
+      expect(screen.getByText(/la ia está analizando/i)).toBeInTheDocument()
+      expect(screen.queryByText(/no pudimos cargar/i)).not.toBeInTheDocument()
+      vi.mocked(api.getEvaluacion).mockResolvedValue(base)
+      await act(() => vi.advanceTimersByTimeAsync(5000))
+      expect(screen.getByText(/puntaje total: 82.5/i)).toBeInTheDocument()
+    })
+
     it('si Reintentar responde 409 recarga el estado actual', async () => {
       vi.mocked(api.reintentarEvaluacion).mockRejectedValue(new api.ApiError(409, 'x'))
       const user = await setup(conError)
