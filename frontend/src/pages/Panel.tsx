@@ -1,11 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getEvaluaciones, getVacantes, type EvaluacionResumen, type Vacante } from '../api'
-import { ESTADOS, useRefresco } from '../estados'
+import { bandaPuntaje, COLOR_BANDA, useRefresco } from '../estados'
+import { boton } from '../estilos'
+import { EstadoInsignia, IconoRefrescar, Insignia, VeredictoInsignia } from '../ui'
 
 const LIMIT = 10
-const FALLBACK = { texto: '', clase: 'bg-slate-100 text-slate-900' }
-const btn = 'rounded border border-slate-300 bg-white px-3 py-1 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-indigo-700'
+const COLUMNAS = ['Candidato', 'Vacante', 'Puntaje', 'Sugerido por la IA', 'Decisión final', 'Estado']
+const Vacio = () => <span className="text-niebla-600">—</span>
+
+function Puntaje({ valor }: { valor: number | null }) {
+  if (valor === null) return <Vacio />
+  return (
+    <span className="flex items-center gap-2.5">
+      <span className="w-10 text-right font-semibold tabular-nums text-selva-900">{valor}</span>
+      <span aria-hidden="true" className="h-1.5 w-14 overflow-hidden rounded-full bg-niebla-200">
+        <span className={`block h-full rounded-full ${COLOR_BANDA[bandaPuntaje(valor)]}`} style={{ width: `${Math.min(100, Math.max(0, valor))}%` }} />
+      </span>
+    </span>
+  )
+}
 
 export function Panel() {
   const [vacantes, setVacantes] = useState<Vacante[]>([])
@@ -46,55 +60,66 @@ export function Panel() {
   const visibles = filas?.slice(0, LIMIT)
 
   const titulo = (id: string) => vacantes.find((v) => v.id === id)?.titulo ?? id
+  const tarjeta = 'rounded-xl bg-white p-6 ring-1 ring-niebla-200'
 
   return (
-    <section>
-      <h1 className="text-2xl font-bold">Panel del reclutador</h1>
-      <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-sm text-amber-900">Demo sin autenticación</p>
-
-      <div className="mt-4">
-        <label htmlFor="filtro-vacante" className="mr-2 font-medium">Vacante</label>
-        <select
-          id="filtro-vacante"
-          value={vacanteId}
-          onChange={(e) => ir(e.target.value, 0)}
-          className="rounded border border-slate-300 bg-white px-2 py-1"
-        >
-          <option value="">Todas</option>
-          {vacantes.map((v) => (
-            <option key={v.id} value={v.id}>{v.titulo}</option>
-          ))}
-        </select>
-        <button type="button" className={`${btn} ml-3`} onClick={actualizar}>Actualizar</button>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-[-0.02em] text-selva-900">Evaluaciones</h1>
+          <p className="mt-1 text-niebla-600">La IA recomienda, una persona del equipo de Talento decide.</p>
+        </div>
+        <Insignia clase="bg-mango-100 text-mango-800 ring-mango-300" punto="bg-mango-500">Demo sin autenticación</Insignia>
       </div>
 
-      {hayError && <p role="alert" className="mt-4 text-red-700">No pudimos cargar las evaluaciones. Intenta de nuevo más tarde.</p>}
-      {!hayError && !filas && <p role="status" aria-busy="true" className="mt-4">Cargando evaluaciones…</p>}
-      {!hayError && filas?.length === 0 && <p className="mt-4">No hay evaluaciones para mostrar.</p>}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full sm:w-72">
+          <label htmlFor="filtro-vacante" className="block text-sm font-semibold text-niebla-700">Vacante</label>
+          <select
+            id="filtro-vacante"
+            value={vacanteId}
+            onChange={(e) => ir(e.target.value, 0)}
+            className="mt-1 block min-h-10 w-full rounded-md border border-niebla-500 bg-white px-3 text-niebla-900"
+          >
+            <option value="">Todas</option>
+            {vacantes.map((v) => (
+              <option key={v.id} value={v.id}>{v.titulo}</option>
+            ))}
+          </select>
+        </div>
+        <button type="button" className={`${boton('secundario', 'compacto')} min-h-10`} onClick={actualizar}>
+          <IconoRefrescar className="size-4" />
+          Actualizar
+        </button>
+      </div>
+
+      {hayError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800 ring-1 ring-red-200">No pudimos cargar las evaluaciones. Intenta de nuevo más tarde.</p>}
+      {!hayError && !filas && <p role="status" aria-busy="true" className={`${tarjeta} text-niebla-600`}>Cargando evaluaciones…</p>}
+      {!hayError && filas?.length === 0 && <p className={`${tarjeta} text-niebla-700`}>No hay evaluaciones para mostrar. Cuando alguien se postule, aparecerá aquí.</p>}
       {!hayError && !!visibles?.length && (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full border-collapse bg-white text-left text-sm">
-            <caption className="sr-only">Evaluaciones ordenadas por puntaje</caption>
-            <thead>
-              <tr className="border-b border-slate-300">
-                {['Candidato', 'Vacante', 'Puntaje', 'Sugerido por la IA', 'Decisión final', 'Estado'].map((h) => (
-                  <th key={h} scope="col" className="px-3 py-2 font-semibold">{h}</th>
+        // tabIndex: en pantallas angostas la tabla se desplaza y debe poder recorrerse con teclado.
+        <div role="region" aria-labelledby="titulo-tabla" tabIndex={0} className="overflow-x-auto rounded-xl bg-white shadow-tarjeta ring-1 ring-niebla-200">
+          <table className="w-full min-w-[50rem] border-collapse text-left text-sm">
+            <caption id="titulo-tabla" className="sr-only">Evaluaciones ordenadas por puntaje</caption>
+            <thead className="bg-niebla-50 text-niebla-700">
+              <tr>
+                {COLUMNAS.map((h) => (
+                  <th key={h} scope="col" className="px-4 py-3 font-semibold first:sticky first:left-0 first:bg-niebla-50 first:pl-5">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-niebla-200">
               {visibles.map((f) => (
-                <tr key={f.id} className="border-b border-slate-200">
-                  <td className="px-3 py-2">
-                    <Link to={`/panel/${f.id}`} className="font-medium text-indigo-800 underline focus-visible:outline-2 focus-visible:outline-indigo-700">{f.candidato}</Link>
+                <tr key={f.id} className="group transition-colors duration-150 hover:bg-niebla-50">
+                  {/* La columna del nombre queda fija al desplazar la tabla en pantallas angostas. */}
+                  <td className="sticky left-0 bg-white py-3.5 pr-4 pl-5 whitespace-nowrap transition-colors duration-150 group-hover:bg-niebla-50">
+                    <Link to={`/panel/${f.id}`} className="font-semibold text-caribe-800 underline-offset-4 hover:underline">{f.candidato}</Link>
                   </td>
-                  <td className="px-3 py-2">{titulo(f.vacante_id)}</td>
-                  <td className="px-3 py-2">{f.puntaje_total ?? '—'}</td>
-                  <td className="px-3 py-2">{f.veredicto_sugerido ?? '—'}</td>
-                  <td className="px-3 py-2">{f.veredicto_final ?? '—'}</td>
-                  <td className="px-3 py-2">
-                    <span className={`rounded px-2 py-0.5 ${(ESTADOS[f.estado] ?? FALLBACK).clase}`}>{(ESTADOS[f.estado] ?? { texto: f.estado }).texto}</span>
-                  </td>
+                  <td className="px-4 py-3.5 text-niebla-700">{titulo(f.vacante_id)}</td>
+                  <td className="px-4 py-3.5"><Puntaje valor={f.puntaje_total} /></td>
+                  <td className="px-4 py-3.5">{f.veredicto_sugerido ? <VeredictoInsignia veredicto={f.veredicto_sugerido} /> : <Vacio />}</td>
+                  <td className="px-4 py-3.5">{f.veredicto_final ? <VeredictoInsignia veredicto={f.veredicto_final} /> : <Vacio />}</td>
+                  <td className="px-4 py-3.5"><EstadoInsignia estado={f.estado} /></td>
                 </tr>
               ))}
             </tbody>
@@ -102,10 +127,12 @@ export function Panel() {
         </div>
       )}
 
-      <nav aria-label="Paginación" className="mt-4 flex gap-2">
-        <button type="button" className={btn} disabled={offset === 0} onClick={() => ir(vacanteId, Math.max(0, offset - LIMIT))}>Anterior</button>
-        <button type="button" className={btn} disabled={!hayMas} onClick={() => ir(vacanteId, offset + LIMIT)}>Siguiente</button>
+      <nav aria-label="Paginación" className="flex items-center justify-end gap-2">
+        <span className="mr-2 text-sm text-niebla-600">Página {offset / LIMIT + 1}</span>
+        <button type="button" className={boton('secundario', 'compacto')} disabled={offset === 0} onClick={() => ir(vacanteId, Math.max(0, offset - LIMIT))}>Anterior</button>
+        <button type="button" className={boton('secundario', 'compacto')} disabled={!hayMas} onClick={() => ir(vacanteId, offset + LIMIT)}>Siguiente</button>
       </nav>
-    </section>
+    </div>
   )
 }
+

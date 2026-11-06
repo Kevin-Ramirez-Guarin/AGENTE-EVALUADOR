@@ -1,6 +1,8 @@
-# Frontend — Portal del candidato y panel del reclutador (Nexo Digital)
+# Frontend — Portal del candidato y panel del reclutador (Giveaway)
 
 Vite + React + TypeScript + Tailwind + React Router.
+
+Sistema de diseño: tokens (colores selva/caribe/cafetal/mango/niebla, escala tipográfica, radios, sombras) en el `@theme` de `src/index.css`; clases de botón y campo en `src/estilos.ts`; componentes compartidos (logo, insignias, campo, iconos) en `src/ui.tsx`. Fuentes autoalojadas con `@fontsource-variable` (Bricolage Grotesque y Figtree).
 
 ```bash
 npm install

@@ -50,8 +50,8 @@ describe('Panel', () => {
     expect(within(filas[0]).getByRole('link', { name: /ana pérez/i })).toHaveAttribute('href', '/panel/12')
     expect(filas[0]).toHaveTextContent('82.5')
     expect(filas[0]).toHaveTextContent('Backend Jr')
-    expect(filas[0]).toHaveTextContent('ENTREVISTA')
-    expect(filas[1]).toHaveTextContent('REVISION_HUMANA')
+    expect(filas[0]).toHaveTextContent('Entrevista')
+    expect(filas[1]).toHaveTextContent('Revisión humana')
     expect(filas[1]).toHaveTextContent(/decidida/i)
   })
 

@@ -10,7 +10,7 @@ async function sinViolacionesGraves(page: Page) {
 }
 
 const RUTAS: [string, string, RegExp][] = [
-  ['/vacantes', 'vacantes', /vacantes abiertas/i],
+  ['/vacantes', 'vacantes', /descubran colombia/i],
   ['/aplicar/backend-jr', 'aplicar', /backend jr/i],
   ['/privacidad', 'privacidad', /política de privacidad/i],
   ['/como-evaluamos?vacante=backend-jr', 'cómo evaluamos', /cómo evaluamos/i],
