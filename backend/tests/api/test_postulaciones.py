@@ -28,6 +28,13 @@ def test_pdf_mayor_5mb_413(client):
     assert postular(client, pdf=PDF + b"0" * MB5).status_code == 413
 
 
+def test_content_length_enorme_413_antes_de_parsear(client, uploads):
+    # Con content-type inválido, solo un corte previo al parseo devuelve 413 (no 415).
+    r = postular(client, pdf=b"x" * (6 * 1024 * 1024), content_type="text/plain")
+    assert r.status_code == 413
+    assert list(uploads.iterdir()) == []
+
+
 def test_pdf_exactamente_5mb_ok(client):
     assert postular(client, pdf=PDF + b"0" * (MB5 - len(PDF))).status_code == 201
 
