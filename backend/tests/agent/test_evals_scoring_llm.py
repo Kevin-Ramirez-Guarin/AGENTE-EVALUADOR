@@ -21,7 +21,9 @@ llm = pytest.mark.llm
 
 
 def _evaluar(archivo, vacante):
-    return evaluar_hv((SAMPLES / archivo).read_bytes(), vacante, VACANTES)
+    g = GOLDEN[archivo]
+    return evaluar_hv((SAMPLES / archivo).read_bytes(), vacante, VACANTES,
+                      identidad={"nombre": g["nombre"], "email": g.get("correo", "")})
 
 
 @llm

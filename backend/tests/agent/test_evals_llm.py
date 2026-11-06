@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from app.agent import extraer_perfil, extraer_texto_pdf, verificar_evidencias
+from app.anonymizer import anonimizar, contiene_genero
 from app.models import PerfilCandidato
 
 SAMPLES = Path(__file__).resolve().parents[3] / "samples"
@@ -25,7 +26,8 @@ def perfiles():
 
     def _obtener(archivo: str):
         if archivo not in cache:
-            texto = extraer_texto_pdf((SAMPLES / archivo).read_bytes())
+            g = GOLDEN[archivo]  # el pipeline real: PDF -> texto -> anonimizar -> LLM; las evidencias se verifican contra lo anonimizado
+            texto = anonimizar(extraer_texto_pdf((SAMPLES / archivo).read_bytes()), {"nombre": g["nombre"], "email": g["correo"]})
             cache[archivo] = (texto, extraer_perfil(texto))
         return cache[archivo]
 
@@ -69,6 +71,17 @@ def test_anios_y_educacion_coinciden_con_el_golden(perfiles, archivo):
 def test_perfil_sin_datos_de_identidad(perfiles, archivo):
     _, perfil = perfiles(archivo)
     assert _datos_identidad_en(perfil.model_dump_json(), GOLDEN[archivo]) == []
+
+
+@llm
+@pytest.mark.parametrize("archivo", CON_TEXTO)
+def test_perfil_sin_palabras_de_genero_ni_el_nombre(perfiles, archivo):
+    _, perfil = perfiles(archivo)
+    volcado = perfil.model_dump_json()
+    assert contiene_genero(volcado) == [], "Gemini reintrodujo marcas de género"
+    for palabra in GOLDEN[archivo]["nombre"].split():
+        if len(palabra) >= LONGITUD_MIN_PALABRA_NOMBRE:
+            assert not re.search(rf"{re.escape(palabra)}", volcado, re.I), palabra
 
 
 def test_detector_de_identidad_ignora_particulas_y_encuentra_datos():
