@@ -2,7 +2,7 @@
 import os
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, event
 from sqlmodel import Field, Session, SQLModel, create_engine
 
 DEFAULT_DATABASE_URL = "sqlite:///./agente.db"
@@ -56,7 +56,16 @@ class Auditoria(SQLModel, table=True):
 def make_engine(url: str | None = None):
     url = url or os.getenv("DATABASE_URL") or DEFAULT_DATABASE_URL
     args = {"check_same_thread": False} if url.startswith("sqlite") else {}
-    return create_engine(url, connect_args=args)
+    engine = create_engine(url, connect_args=args)
+    if url.startswith("sqlite"):
+        @event.listens_for(engine, "connect")
+        def _pragmas(dbapi_conn, _):
+            # WAL: lectores y un escritor a la vez; busy_timeout: espera en vez de "database is locked".
+            cur = dbapi_conn.cursor()
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA busy_timeout=10000")
+            cur.close()
+    return engine
 
 
 _engine = None
