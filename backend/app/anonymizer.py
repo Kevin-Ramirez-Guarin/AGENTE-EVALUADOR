@@ -9,7 +9,6 @@ import unicodedata
 PERSONA = "[PERSONA]"
 MIN_LETRAS_NOMBRE = 3
 PARTICULAS = frozenset({"del", "los", "las", "van", "von", "der", "den", "san"})  # no son "el nombre"
-TOKENS_CONTACTO = ("[CORREO]", "[TELEFONO]", "[DOCUMENTO]", "[URL]")
 
 
 def plegar(texto: str) -> str:
@@ -34,6 +33,7 @@ def _c(patron: str, flags: int = 0) -> re.Pattern:
 
 
 _DIA = r"\d{1,2}(?:[/.-]\d{1,2}[/.-]\d{2,4}|\s+de\s+[a-z]+\s+(?:de\s+)?\d{4})"
+_FECHA_NAC = r"(?:fecha|f\.?)[ \t]*(?:de[ \t]+)?nac(?:imiento|\.)?"  # "Fecha de nacimiento", "F. nacimiento", "F. de nac."
 _ETIQUETAS = (r"(?:lugar\s+de\s+(?:nacimiento|residencia)|direccion|domicilio|ciudad(?:\s+de\s+residencia)?|residencia|"
               r"ubicacion|nacionalidad|estado\s+civil|sexo|genero|edad)")
 # ponytail: lista finita de gentilicios; uno que no esté aquí pasa (se mitiga con la etiqueta "Nacionalidad:").
@@ -49,7 +49,7 @@ DATOS = [(_c(p), r) for p, r in [
     (r"\b(?:c\.?\s?c\.?|cedula(?:\s+de\s+ciudadania)?|documento(?:\s+de\s+identidad)?|nit|pasaporte)"
      r"[ \t]*(?:no\.?|numero|n[°º.]|#)?[ \t]*[:.]?[ \t]*\d[\d., ]{4,14}\d", "[DOCUMENTO]"),
     (r"(?<![\d.])\d{1,3}(?:\.\d{3}){2,3}(?![\d.])|(?<![\d.,-])\d{8,10}(?![\d-])", "[DOCUMENTO]"),
-    (rf"\bfecha\s+de\s+nacimiento[ \t]*:?[ \t]*{_DIA}\.?", ""),
+    (rf"\b{_FECHA_NAC}[ \t]*:?[ \t]*{_DIA}\.?", ""),
     (rf"\bnacid[oa](?:/a)?\s+el\s+{_DIA}\.?", ""),
     (rf"\b{_ETIQUETAS}[ \t]*:[ \t]*[^\n|;]+", ""),
     (r"\b\d{1,2}[ \t]+anos[ \t]+de[ \t]+edad\.?", ""),
@@ -57,7 +57,8 @@ DATOS = [(_c(p), r) for p, r in [
     (r"\btengo[ \t]+\d{1,2}[ \t]+anos(?![ \t]+de[ \t]+experiencia)\.?", ""),
     (r"\b(?:nacid[oa](?:/a)?|residente|reside|residenciad[oa]|vivo|vive|domiciliad[oa])\s+en\s+[^.\n;|]+\.?", ""),
     (r"\b(?:calle|carrera|cra|cr|kra|avenida|av|diagonal|transversal|tv)\.?\s+\d+[^\n|;]*", ""),
-    (rf"(?:\bsoy\s+|\bciudadan[oa]\s+|\bde\s+nacionalidad\s+)?{_GENTILICIO}\b\.?", ""),
+    # solo en contexto de origen ("soy colombiana", "de origen peruano") o sola en su línea; no dentro de "Colegio Colombiano"
+    (rf"\b(?:soy|ciudadan[oa]|de\s+nacionalidad|de\s+origen)\s+{_GENTILICIO}\b\.?|(?m:^)[ \t]*{_GENTILICIO}[ \t]*\.?[ \t]*(?m:$)", ""),
     (r"\b(?:solter|casad|divorciad|viud)[oa](?:/a)?\b\.?|\bunion\s+libre\b\.?", ""),
     (r"\b(?:madre|padre)\s+(?:cabeza\s+de\s+hogar|soltera?|de\s+familia)\b\.?", ""),
     (r"(?:\b(?:la|el)\s+)?\b(?:senora|senor|senorita|dona|sra|sr|srta)\b\.?", ""),
@@ -85,6 +86,14 @@ GENERO = [(_c(p), r) for p, r in [
     (_rol("disenador"), "profesional de diseño"),
     (_rol("administrador"), "profesional de administración"),
     (_rol("contador"), "profesional de contaduría"),
+    (_rol("director"), "profesional de dirección"),
+    (_rol("profesor"), "profesional de docencia"),
+    (_rol("coordinador"), "profesional de coordinación"),
+    (rf"{_ART}jef[ae](?:/a)?\b", "responsable"),
+    (rf"{_ART}gerenta\b", "gerente"),
+    (rf"{_ART}president[ae]\b", "persona en la presidencia"),
+    (r"\b(?:mujer|hombre)(?![\w-])", "persona"),
+    (r"\b(?:femenin|masculin)[oa]\b", ""),
     (rf"{_ART}licenciad[oa](?:/a)?\b", "título de licenciatura"),
     (rf"{_ART}doctor(?:a)?(?:/a)?\s+en\b", "título de doctorado en"),
     (rf"{_ART}(?:egresad|graduad|titulad)[oa](?:/a)?\b", "con título"),
@@ -96,7 +105,7 @@ GENERO = [(_c(p), r) for p, r in [
     (r"\borientad[oa](?:/a)?\s+a\b", "con orientación a"),
     (r"\binteresad[oa](?:/a)?\s+en\b", "con interés en"),
 ]]
-PRONOMBRE = _c(r"\b(?:ella|él)\b", re.IGNORECASE)  # sobre el original: "el" (artículo) no lleva tilde
+PRONOMBRE = _c(r"\b(?:ellas|ellos|ella|él)\b", re.IGNORECASE)  # sobre el original: "el" (artículo) no lleva tilde
 _COLAPSO_PERSONA = _c(r"\[PERSONA\](?:[ \t]+(?:de|del|la|las|los|y|e))*(?:[ \t]+\[PERSONA\])+")
 
 
@@ -113,15 +122,31 @@ def _palabras_nombre(identidad: dict | None) -> list[str]:
     return sorted({p for p in palabras if len(p) >= MIN_LETRAS_NOMBRE and p not in PARTICULAS})
 
 
+# ponytail: lista finita de ciudades y países para quitar el lugar suelto de una línea de contacto
+# ("correo | tel | Caracas, Venezuela"); un lugar fuera de la lista sobrevive. Ampliar al detectarlo.
+_PALABRAS_LUGAR = frozenset(
+    "bogota medellin cali barranquilla cartagena bucaramanga pereira manizales cucuta ibague santa marta villavicencio "
+    "pasto monteria neiva armenia popayan quibdo valledupar sincelejo tunja riohacha florencia yopal soacha bello "
+    "envigado itagui palmira caracas maracaibo valencia venezuela colombia ecuador peru mexico argentina chile d c".split())
+_ETIQUETAS_CONTACTO = frozenset("tel telefono celular cel movil whatsapp correo email e-mail contacto linkedin github".split())
+_MARCAS = re.compile(r"\[(?:CORREO|TELEFONO|DOCUMENTO|URL)\]")
+
+
+def _solo_contacto(segmento: str) -> bool:
+    """Segmento de una línea de contacto: solo marcas, etiquetas ("Tel:") o lugares sueltos."""
+    palabras = [p for p in re.split(r"[\s,.:;]+", plegar(_MARCAS.sub(" ", segmento))) if p]
+    return all(p in _ETIQUETAS_CONTACTO or p in _PALABRAS_LUGAR for p in palabras)
+
+
 def _limpiar(texto: str) -> str:
+    """Espacios normalizados, sin líneas vacías; en líneas con contacto se quita solo el contacto."""
     lineas = []
     for linea in texto.splitlines():
         partes = [re.sub(r"[ \t]+", " ", p).strip() for p in linea.split("|")]
+        if _MARCAS.search(linea):
+            partes = [p for p in partes if not _solo_contacto(p)]
         linea = " | ".join(p for p in partes if p)
-        tokens = sum(t in linea for t in TOKENS_CONTACTO)
-        if tokens and (tokens > 1 or "|" in linea):
-            linea = "[CONTACTO]"
-        if linea and not (linea == "[CONTACTO]" and lineas and lineas[-1] == linea):
+        if linea:
             lineas.append(linea)
     return "\n".join(lineas)
 
