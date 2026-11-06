@@ -10,6 +10,7 @@ Pasos previos en Google Cloud Console:
 Uso (desde backend/):  python scripts/autorizar_google.py
 Se abre el navegador; al aceptar, se escribe `token.json`.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -25,7 +26,11 @@ def main() -> None:
         sys.exit(f"Falta {CREDENTIALS_PATH}. Sigue los pasos del docstring de este script.")
     creds = InstalledAppFlow.from_client_secrets_file(
         str(CREDENTIALS_PATH), SCOPES).run_local_server(port=0)
-    TOKEN_PATH.write_text(creds.to_json(), encoding="utf-8")
+    # Permisos 0o600 desde la creación: el token da acceso al Gmail del usuario.
+    fd = os.open(TOKEN_PATH, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(creds.to_json())
+    os.chmod(TOKEN_PATH, 0o600)  # si el archivo ya existía con otros permisos
     print(f"Listo: token guardado en {TOKEN_PATH}")
 
 
