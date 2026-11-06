@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlmodel import Session, select
@@ -119,6 +119,7 @@ def _fila(ev: Evaluacion, post: Postulacion, cand: Candidato) -> dict:
 
 @router.get("/evaluaciones")
 def listar_evaluaciones(vacante_id: str | None = None, estado: str | None = None,
+                        limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
                         session: Session = Depends(get_session)):
     q = (select(Evaluacion, Postulacion, Candidato)
          .join(Postulacion, Evaluacion.postulacion_id == Postulacion.id)
@@ -128,7 +129,7 @@ def listar_evaluaciones(vacante_id: str | None = None, estado: str | None = None
         q = q.where(Postulacion.vacante_id == vacante_id)
     if estado:
         q = q.where(Evaluacion.estado == estado)
-    return [_fila(*r) for r in session.exec(q).all()]
+    return [_fila(*r) for r in session.exec(q.limit(limit).offset(offset)).all()]
 
 
 @router.get("/evaluaciones/{evaluacion_id}")
