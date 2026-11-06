@@ -13,16 +13,10 @@ import {
   type Resultado,
   type Veredicto,
 } from '../api'
+import { ETIQUETA } from '../criterios'
 import { useRefresco } from '../estados'
 
 const VEREDICTOS: Veredicto[] = ['ENTREVISTA', 'REVISION_HUMANA', 'NO_CONTINUA']
-const ETIQUETA: Record<NombreCriterio, string> = {
-  tecnico: 'Técnico',
-  experiencia: 'Experiencia',
-  blandas: 'Habilidades blandas',
-  educacion: 'Educación',
-  idiomas: 'Idiomas',
-}
 const CLAVE_RECLUTADOR = 'reclutador'
 const campo = 'mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 disabled:bg-slate-100'
 

@@ -1,4 +1,5 @@
 import { Link, Navigate, Route, Routes } from 'react-router-dom'
+import { ComoEvaluamos } from './pages/ComoEvaluamos'
 import { Detalle } from './pages/Detalle'
 import { Aplicar } from './pages/Aplicar'
 import { Panel } from './pages/Panel'
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/panel" element={<Panel />} />
           <Route path="/panel/:id" element={<Detalle />} />
           <Route path="/privacidad" element={<Privacidad />} />
+          <Route path="/como-evaluamos" element={<ComoEvaluamos />} />
           <Route path="*" element={<Navigate to="/vacantes" replace />} />
         </Routes>
       </main>
