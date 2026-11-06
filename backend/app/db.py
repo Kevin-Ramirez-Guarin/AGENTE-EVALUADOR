@@ -1,11 +1,12 @@
 """Persistencia SQLModel/SQLite (PLAN.md §6)."""
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import JSON, Column
-from sqlmodel import Field, Session, SQLModel, create_engine
+from sqlalchemy import JSON, Column, event
+from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 DEFAULT_DATABASE_URL = "sqlite:///./agente.db"
+MINUTOS_EVALUACION_ATASCADA = 10  # en_evaluacion por más de esto se considera perdida
 
 
 def _now() -> datetime:
@@ -31,12 +32,17 @@ class Postulacion(SQLModel, table=True):
 class Evaluacion(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     postulacion_id: int = Field(foreign_key="postulacion.id")
-    puntaje_total: float = Field(index=True)
-    perfil: dict = Field(sa_column=Column(JSON))
-    resultado: dict = Field(sa_column=Column(JSON))
-    veredicto_ia: str
+    # Nulos mientras la evaluación está en segundo plano (o si falló).
+    puntaje_total: float | None = Field(default=None, index=True)
+    perfil: dict | None = Field(default=None, sa_column=Column(JSON(none_as_null=True)))
+    resultado: dict | None = Field(default=None, sa_column=Column(JSON(none_as_null=True)))
+    veredicto_ia: str | None = None
     veredicto_final: str | None = None
-    estado: str = "pendiente_revision"
+    # en_evaluacion -> pendiente_revision | error_evaluacion; pendiente_revision -> decidida.
+    # Sin migración: la BD SQLite se crea nueva en cada demo.
+    estado: str = "en_evaluacion"
+    error: str | None = None
+    evaluacion_iniciada_at: datetime | None = Field(default_factory=_now)
     decidido_por: str | None = None
     motivo: str | None = None
 
@@ -52,7 +58,16 @@ class Auditoria(SQLModel, table=True):
 def make_engine(url: str | None = None):
     url = url or os.getenv("DATABASE_URL") or DEFAULT_DATABASE_URL
     args = {"check_same_thread": False} if url.startswith("sqlite") else {}
-    return create_engine(url, connect_args=args)
+    engine = create_engine(url, connect_args=args)
+    if url.startswith("sqlite"):
+        @event.listens_for(engine, "connect")
+        def _pragmas(dbapi_conn, _):
+            # WAL: lectores y un escritor a la vez; busy_timeout: espera en vez de "database is locked".
+            cur = dbapi_conn.cursor()
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA busy_timeout=10000")
+            cur.close()
+    return engine
 
 
 _engine = None
@@ -64,6 +79,18 @@ def get_engine():
         _engine = make_engine()
         SQLModel.metadata.create_all(_engine)
     return _engine
+
+
+def marcar_interrumpidas(session: Session, ahora: datetime | None = None) -> int:
+    """Al arrancar: las en_evaluacion atascadas (el proceso murió) pasan a error_evaluacion."""
+    corte = (ahora or _now()) - timedelta(minutes=MINUTOS_EVALUACION_ATASCADA)
+    filas = session.exec(select(Evaluacion).where(
+        Evaluacion.estado == "en_evaluacion", Evaluacion.evaluacion_iniciada_at < corte)).all()
+    for ev in filas:
+        ev.estado, ev.error = "error_evaluacion", "interrumpida"
+        session.add(ev)
+    session.commit()
+    return len(filas)
 
 
 def get_session():

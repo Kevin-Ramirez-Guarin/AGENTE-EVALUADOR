@@ -3,18 +3,19 @@ import json
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import update
+from sqlalchemy import and_, case, or_, update
 from sqlmodel import Session, select
 
-from app.agent import PdfInvalidoError, PdfSinTextoError
+from app.agent import PdfInvalidoError, PdfSinTextoError, extraer_texto_pdf
 from app.correos import correo_invitacion, correo_no_continua
-from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_session
+from app.db import (MINUTOS_EVALUACION_ATASCADA, Auditoria, Candidato, Evaluacion,
+                    Postulacion, get_engine, get_session)
 from app.evaluador import Evaluador, get_evaluador
 from app.google_apis import siguiente_horario
 from app.models import Veredicto
@@ -51,8 +52,8 @@ def _rechazar(session: Session, status: int, detail: str, vacante_id: str) -> No
 
 
 def _persistir(session: Session, uploads: Path, contenido: bytes, vacante_id: str,
-               nombre: str, email: str, perfil, resultado) -> Evaluacion:
-    """Escribe el PDF y las filas; si algo falla, borra el PDF y hace rollback."""
+               nombre: str, email: str) -> Evaluacion:
+    """Escribe el PDF y las filas (evaluación en_evaluacion); si algo falla, borra el PDF y hace rollback."""
     uploads.mkdir(parents=True, exist_ok=True)
     # El nombre en disco es un UUID; el nombre del cliente nunca se usa.
     destino = uploads / f"{uuid.uuid4()}.pdf"
@@ -61,21 +62,12 @@ def _persistir(session: Session, uploads: Path, contenido: bytes, vacante_id: st
         candidato = Candidato(nombre=nombre, email=email)
         session.add(candidato)
         session.flush()
-        consentimiento_at = datetime.now(timezone.utc)
         post = Postulacion(candidato_id=candidato.id, vacante_id=vacante_id,
-                           pdf_path=destino.name, consentimiento_at=consentimiento_at)
+                           pdf_path=destino.name, consentimiento_at=datetime.now(timezone.utc))
         session.add(post)
         session.flush()
-        ev = Evaluacion(postulacion_id=post.id, puntaje_total=resultado.puntaje_total,
-                        perfil=perfil.model_dump(mode="json"),
-                        resultado=resultado.model_dump(mode="json"),
-                        veredicto_ia=resultado.veredicto_sugerido.value)
+        ev = Evaluacion(postulacion_id=post.id)
         session.add(ev)
-        session.flush()
-        _auditar(session, "evaluacion_creada", ev.id,
-                 {"vacante_id": vacante_id, "veredicto_sugerido": ev.veredicto_ia,
-                  "puntaje_total": ev.puntaje_total,
-                  "consentimiento_at": consentimiento_at.isoformat()})
         session.commit()
         return ev
     except Exception:
@@ -84,9 +76,51 @@ def _persistir(session: Session, uploads: Path, contenido: bytes, vacante_id: st
         raise
 
 
-# Función síncrona: FastAPI la corre en un hilo, así el I/O y el evaluador no bloquean el event loop.
+def _marcar_error(session: Session, ev: Evaluacion, vacante_id: str, exc: Exception) -> None:
+    # Solo el tipo de la excepción: sin trazas ni datos personales.
+    ev.estado, ev.error = "error_evaluacion", f"Falló la evaluación ({type(exc).__name__})"
+    _auditar(session, "evaluacion_fallida", ev.id,
+             {"vacante_id": vacante_id, "error": type(exc).__name__})
+    session.add(ev)
+    session.commit()
+
+
+def evaluar_en_segundo_plano(evaluacion_id: int, evaluador: Evaluador, uploads: Path) -> None:
+    """Corre fuera de la petición, con su propia sesión; nunca lanza (el fallo queda en la fila)."""
+    with Session(get_engine()) as session:
+        ev = session.get(Evaluacion, evaluacion_id)
+        post = session.get(Postulacion, ev.postulacion_id)
+        cand = session.get(Candidato, post.candidato_id)
+        vacante_id = post.vacante_id
+        try:
+            vacante = next(v for v in _vacantes() if v.id == vacante_id)
+            pdf = (uploads / post.pdf_path).read_bytes()
+            perfil, resultado = evaluador(
+                pdf, vacante, identidad={"nombre": cand.nombre, "email": cand.email})
+            ev.puntaje_total = resultado.puntaje_total
+            ev.perfil = perfil.model_dump(mode="json")
+            ev.resultado = resultado.model_dump(mode="json")
+            ev.veredicto_ia = resultado.veredicto_sugerido.value
+            ev.estado, ev.error = "pendiente_revision", None
+            _auditar(session, "evaluacion_creada", ev.id,
+                     {"vacante_id": vacante_id, "veredicto_sugerido": ev.veredicto_ia,
+                      "puntaje_total": ev.puntaje_total,
+                      "consentimiento_at": post.consentimiento_at.isoformat()})
+            session.add(ev)
+            session.commit()
+            return
+        except Exception as exc:
+            session.rollback()
+            error = exc
+    # Sesión nueva: la anterior pudo quedar inservible (p. ej. falló el commit del resultado).
+    with Session(get_engine()) as session:
+        _marcar_error(session, session.get(Evaluacion, evaluacion_id), vacante_id, error)
+
+
+# Función síncrona: FastAPI la corre en un hilo, así el I/O no bloquea el event loop.
 @router.post("/postulaciones", status_code=201)
 def crear_postulacion(
+    background: BackgroundTasks,
     vacante_id: str = Form(),
     nombre: str = Form(min_length=1, max_length=200),
     email: str = Form(max_length=254, pattern=EMAIL_RE),
@@ -96,9 +130,7 @@ def crear_postulacion(
     evaluador: Evaluador = Depends(get_evaluador),
     uploads: Path = Depends(get_uploads_dir),
 ):
-    from app.main import _cargar_vacantes  # import tardío: main importa este módulo
-
-    vacante = next((v for v in _cargar_vacantes() if v.id == vacante_id), None)
+    vacante = next((v for v in _vacantes() if v.id == vacante_id), None)
     if vacante is None:
         _rechazar(session, 404, "Vacante no encontrada", vacante_id)
     if not consentimiento:
@@ -110,18 +142,13 @@ def crear_postulacion(
         _rechazar(session, 413, "El PDF supera 5 MB", vacante_id)
     if not contenido.startswith(b"%PDF"):
         _rechazar(session, 415, "El archivo no es un PDF válido", vacante_id)
-
     try:
-        perfil, resultado = evaluador(contenido, vacante)
-    except Exception as exc:
-        status, detail = ERRORES_PDF.get(
-            type(exc), (502, "No se pudo evaluar la hoja de vida"))
-        _auditar(session, "evaluacion_fallida", None,
-                 {"vacante_id": vacante_id, "error": type(exc).__name__, "status": status})
-        session.commit()
-        raise HTTPException(status, detail) from exc
+        extraer_texto_pdf(contenido)  # el candidato ve este error al momento
+    except (PdfInvalidoError, PdfSinTextoError) as exc:
+        _rechazar(session, *ERRORES_PDF[type(exc)], vacante_id)
 
-    ev = _persistir(session, uploads, contenido, vacante_id, nombre, email, perfil, resultado)
+    ev = _persistir(session, uploads, contenido, vacante_id, nombre, email)
+    background.add_task(evaluar_en_segundo_plano, ev.id, evaluador, uploads)
     return {"evaluacion_id": ev.id, "estado": ev.estado}
 
 
@@ -138,7 +165,9 @@ def listar_evaluaciones(vacante_id: str | None = None, estado: str | None = None
     q = (select(Evaluacion, Postulacion, Candidato)
          .join(Postulacion, Evaluacion.postulacion_id == Postulacion.id)
          .join(Candidato, Postulacion.candidato_id == Candidato.id)
-         .order_by(Evaluacion.puntaje_total.desc(), Evaluacion.id))
+         .order_by(case((Evaluacion.estado == "en_evaluacion", 1),
+                        (Evaluacion.estado == "error_evaluacion", 2), else_=0),
+                   Evaluacion.puntaje_total.desc(), Evaluacion.id))
     if vacante_id:
         q = q.where(Postulacion.vacante_id == vacante_id)
     if estado:
@@ -155,7 +184,31 @@ def obtener_evaluacion(evaluacion_id: int, session: Session = Depends(get_sessio
     cand = session.get(Candidato, post.candidato_id)
     return {"id": ev.id, "vacante_id": post.vacante_id, "candidato": cand.nombre,
             "perfil": ev.perfil, "resultado": ev.resultado,
-            "veredicto_final": ev.veredicto_final, "estado": ev.estado}
+            "veredicto_final": ev.veredicto_final, "estado": ev.estado, "error": ev.error}
+
+
+@router.post("/evaluaciones/{evaluacion_id}/reintentar", status_code=202)
+def reintentar(evaluacion_id: int, background: BackgroundTasks,
+               session: Session = Depends(get_session),
+               evaluador: Evaluador = Depends(get_evaluador),
+               uploads: Path = Depends(get_uploads_dir)):
+    ev = session.get(Evaluacion, evaluacion_id)
+    if ev is None:
+        raise HTTPException(404, "Evaluación no encontrada")
+    # UPDATE condicional: un doble clic no programa dos evaluaciones. Se admite también
+    # en_evaluacion si lleva más de MINUTOS_EVALUACION_ATASCADA (la tarea se perdió).
+    ahora = datetime.now(timezone.utc)
+    atascada = and_(Evaluacion.estado == "en_evaluacion", Evaluacion.evaluacion_iniciada_at
+                    < ahora - timedelta(minutes=MINUTOS_EVALUACION_ATASCADA))
+    res = session.connection().execute(
+        update(Evaluacion).where(Evaluacion.id == evaluacion_id,
+                                 or_(Evaluacion.estado == "error_evaluacion", atascada))
+        .values(estado="en_evaluacion", error=None, evaluacion_iniciada_at=ahora))
+    session.commit()
+    if res.rowcount == 0:
+        raise HTTPException(409, "Solo se reintentan evaluaciones en error o atascadas")
+    background.add_task(evaluar_en_segundo_plano, evaluacion_id, evaluador, uploads)
+    return {"id": evaluacion_id, "estado": "en_evaluacion"}
 
 
 class DecisionIn(BaseModel):
@@ -170,8 +223,9 @@ def decidir(evaluacion_id: int, body: DecisionIn, session: Session = Depends(get
     ev = session.get(Evaluacion, evaluacion_id)
     if ev is None:
         raise HTTPException(404, "Evaluación no encontrada")
-    if ev.estado == "decidida":
-        raise HTTPException(409, "La evaluación ya fue decidida")
+    if ev.estado != "pendiente_revision":
+        raise HTTPException(409, "La evaluación ya fue decidida" if ev.estado == "decidida"
+                            else "La evaluación aún no está lista para decidir")
     if body.veredicto.value != ev.veredicto_ia and not (body.motivo or "").strip():
         raise HTTPException(422, "Se requiere motivo si el veredicto difiere del sugerido")
     # UPDATE condicional: solo una decisión concurrente gana.
