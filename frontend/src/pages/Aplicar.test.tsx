@@ -54,6 +54,12 @@ describe('Aplicar', () => {
     expect(screen.getByRole('link', { name: /pol[ií]tica/i })).toHaveAttribute('href', '/privacidad')
   })
 
+  it('enlaza a Cómo evaluamos con la vacante, junto a la autorización', async () => {
+    setup()
+    await screen.findByRole('checkbox', { name: /autorizo/i })
+    expect(screen.getByRole('link', { name: /cómo evaluamos/i })).toHaveAttribute('href', '/como-evaluamos?vacante=backend-jr')
+  })
+
   it('no envía sin autorización y asocia el error al campo', async () => {
     const user = setup()
     await fill(user, pdf(), false)
