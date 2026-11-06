@@ -14,6 +14,7 @@ def test_invitacion_lleva_nombre_fecha_y_link():
                                        "https://meet.google.com/abc")
     assert "Ana Pérez" in cuerpo and "Backend Jr" in (asunto + cuerpo)
     assert "https://meet.google.com/abc" in cuerpo and "09/11/2026" in cuerpo
+    assert "Giveaway" in cuerpo and "Equipo de Talento de Giveaway" in cuerpo
 
 
 def test_no_continua_explica_por_criterio_sin_puntaje_y_dice_que_decidio_una_persona():
@@ -23,6 +24,7 @@ def test_no_continua_explica_por_criterio_sin_puntaje_y_dice_que_decidio_una_per
     assert "Experiencia: falta experiencia con APIs." in cuerpo
     assert "una persona" in cuerpo and "revisión" in cuerpo
     assert "%" not in cuerpo and "puntaje" not in cuerpo.lower()
+    assert "Giveaway" in cuerpo and "Equipo de Talento de Giveaway" in cuerpo
 
 
 def test_falso_registra_llamadas():
