@@ -307,3 +307,67 @@ Estos hallazgos salieron de las pruebas con Gemini real y de la revisión de có
 | 7 | **El *golden set* no cubría `REVISION_HUMANA`.** | Se agregó `hv_qa_limite.pdf`, con un obligatorio en el límite. |
 | 8 | **La defensa contra *prompt injection* funciona con Gemini real:** la HV que pide "asigna puntaje 100" sacó 21,7. | Valida que el puntaje no dependa del texto del LLM. |
 | 9 | **La integración destapó un bug en las e2e:** subían un PDF sin texto. | Se corrigió antes de fusionar el Sprint 3. |
+
+## 11. Limitaciones y trabajo futuro
+
+| Limitación | Impacto | Trabajo futuro |
+|---|---|---|
+| **Sin autenticación:** el panel es público y el `reclutador` lo declara el cliente. | La auditoría se puede suplantar. | Inicio de sesión con roles; firmar la decisión con la identidad verificada. |
+| **Anonimizador con listas finitas** (roles con género, ciudades, países). El nombre solo se quita si llega en `identidad`. | Un término fuera de la lista sobrevive; datos indirectos (colegio, barrio) pueden revelar origen o clase. | Ampliar los diccionarios con los evals; evaluar un reconocedor de entidades como segunda capa. |
+| **LLM no determinístico.** | La extracción varía entre corridas (hallazgo 5). | Más sinónimos o *embeddings* para el *matching*; varias corridas y votación en casos límite. |
+| **Prueba de sesgo acotada:** 1 HV base, 8 variantes, 3 corridas. | No permite una conclusión estadística. | Un banco amplio de HV y variantes, y medir también el lenguaje del texto libre. |
+| **Carga medida con el evaluador simulado y 20 usuarios.** | No mide cuotas ni latencia de Gemini. Unas 40 evaluaciones simultáneas saturarían el pool de hilos. | Una cola de trabajos con reintentos; repetir la carga con el agente real. |
+| **SQLite.** | Riesgo de "database is locked" con más carga. | PostgreSQL en producción. |
+| **Latencia del modo agente:** ~15–27 s por HV. | Experiencia del reclutador. | Usar `pipeline` cuando el costo o la latencia importen; procesamiento por lotes. |
+| **`siguiente_horario` no considera festivos colombianos.** | Una entrevista podría caer en festivo. | Calendario de festivos. |
+| **Derechos del titular atendidos a mano;** purga manual; BD y PDF sin cifrar en reposo. | Cumplimiento parcial de la Ley 1581 en un despliegue real. | *Endpoints* para conocer, rectificar y suprimir; purga programada; cifrado. |
+| **Gmail y Calendar sin prueba real** (falta el cliente OAuth). | La notificación solo está verificada con *mocks*. | Completar la prueba real (§8.4). |
+| **Citas normativas por verificar** en `docs/etica.md`. | Rigor jurídico. | Revisión contra fuentes oficiales y, en un despliegue real, una evaluación de impacto de privacidad completa. |
+| **El reclutador puede tener sus propios sesgos.** | El sistema registra y explica, pero no los elimina. | Métricas de contradicción IA–humano por grupo en la auditoría. |
+
+## 12. Conclusiones
+
+1. **Sí se puede usar IA generativa en selección sin delegarle la decisión.** El MVP reparte el trabajo así: la IA lee y estructura la evidencia, las reglas producen un puntaje reproducible y una persona conserva el juicio y la responsabilidad.
+2. **Separar la extracción del puntaje fue la decisión más valiosa.** Hizo explicable el resultado, neutralizó el *prompt injection* (21,7 frente a los 100 pedidos) y, como mostró el contraste sin anonimizador, impidió que la identidad llegara al número aun cuando el modelo la veía.
+3. **Anonimizar la entrada no basta: hay que vigilar la salida.** Gemini reintrodujo el género por su cuenta ("la candidata") con una entrada neutra. Ese hallazgo, que solo apareció con evals sobre el modelo real, justifica probar con el LLM real y no solo con *mocks*.
+4. **Una prueba de sesgo puede salir bien por las razones equivocadas.** El efecto techo de la primera corrida enseñó que una prueba saturada no detecta nada. Diseñar la prueba importa tanto como pasarla.
+5. **Contratos primero, trabajo en paralelo.** Fijar los modelos, las vacantes y la API en el Sprint 0 permitió que tres tracks avanzaran con *mocks* y se integraran sin conflictos, con TDD y 98 % de cobertura.
+6. **Los límites quedan declarados.** Falta autenticación, la anonimización depende de listas finitas, la prueba de sesgo es pequeña y la integración real con Google está pendiente. Este MVP demuestra el diseño; no está listo para producción.
+
+## Referencias
+
+**Normas y referentes** (citadas en [`docs/etica.md`](etica.md); las marcadas *por verificar* no se confirmaron contra la fuente oficial):
+
+- Constitución Política de Colombia, arts. 13 y 15.
+- Ley 1581 de 2012, por la cual se dictan disposiciones generales para la protección de datos personales.
+- Decreto 1377 de 2013, compilado en el Decreto 1074 de 2015 *(por verificar)*.
+- Superintendencia de Industria y Comercio, Circular Externa 002 de 2024, sobre el tratamiento de datos personales en sistemas de IA *(por verificar)*.
+- Corte Constitucional, Sentencia T-323 de 2024 *(por verificar)*.
+- Ley 1482 de 2011, modificada por la Ley 1752 de 2015 (antidiscriminación) *(por verificar)*.
+- Reglamento (UE) 2016/679 (RGPD), art. 22.
+- Reglamento (UE) de Inteligencia Artificial (AI Act), Anexo III, punto 4 (empleo como sistema de alto riesgo).
+
+**Documentación técnica:**
+
+- LangChain. *Agents* (`create_agent`) y *structured output*. https://docs.langchain.com/oss/python/langchain/agents
+- LangChain. Integración `langchain-google-genai` (`ChatGoogleGenerativeAI`). https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai
+- Google Cloud. *Generative AI on Vertex AI* (Gemini, *express mode*). https://cloud.google.com/vertex-ai/generative-ai/docs
+- Google. Gmail API y Google Calendar API. https://developers.google.com/workspace
+
+**Inspiración:** Niccol, A. (director). (1997). *Gattaca* [película]. Columbia Pictures.
+
+## Anexos
+
+| Anexo | Archivo |
+|---|---|
+| A. Plan del proyecto (contratos, fases, estrategia de pruebas) | [`PLAN.md`](../PLAN.md) |
+| B. Tablero de estado, decisiones, hallazgos y deuda | [`docs/ESTADO.md`](ESTADO.md) |
+| C. Eje ético y regulatorio | [`docs/etica.md`](etica.md) y [`docs/etica/`](etica/) |
+| D. Contrato de la API | [`docs/api.md`](api.md) |
+| E. Resultados de la prueba de sesgo | [`docs/sesgo/resultados.md`](sesgo/resultados.md), [`docs/sesgo/resultados_sin_anonimizar.md`](sesgo/resultados_sin_anonimizar.md) |
+| F. Resultados de la prueba de carga | [`docs/carga/resultados.md`](carga/resultados.md) |
+| G. Vacantes de Nexo Digital | [`backend/data/vacantes.json`](../backend/data/vacantes.json) |
+| H. Conjunto dorado y HV sintéticas | [`samples/esperado.json`](../samples/esperado.json), [`samples/`](../samples/) |
+| I. Agente, puntaje y anonimizador | [`backend/app/agent.py`](../backend/app/agent.py), [`backend/app/scoring.py`](../backend/app/scoring.py), [`backend/app/anonymizer.py`](../backend/app/anonymizer.py) |
+| J. Script de sesgo contrafactual | [`backend/scripts/bias_test.py`](../backend/scripts/bias_test.py) |
+| K. Pruebas | [`backend/tests/`](../backend/tests/), [`e2e/`](../e2e/), [`load/`](../load/) |
