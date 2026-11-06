@@ -10,9 +10,11 @@ from fpdf import FPDF
 
 _FORMAS = {
     "f": {"un": "Una", "desarrollador": "Desarrolladora", "ingeniero": "Ingeniera", "apasionado": "apasionada",
-          "egresado": "egresada", "nacido": "Nacida", "pronombre": "Ella", "mujer": "mujer", "jefe": "Jefa"},
+          "egresado": "egresada", "nacido": "Nacida", "pronombre": "Ella", "mujer": "mujer", "jefe": "Jefa",
+          "tecnico": "Técnica"},
     "m": {"un": "Un", "desarrollador": "Desarrollador", "ingeniero": "Ingeniero", "apasionado": "apasionado",
-          "egresado": "egresado", "nacido": "Nacido", "pronombre": "Él", "mujer": "hombre", "jefe": "Jefe"},
+          "egresado": "egresado", "nacido": "Nacido", "pronombre": "Él", "mujer": "hombre", "jefe": "Jefe",
+          "tecnico": "Técnico"},
 }
 _NACIONALIDAD = {"Bogotá": "Colombian", "Quibdó": "Colombian", "Caracas, Venezuela": "Venezolan"}
 
@@ -80,20 +82,21 @@ def texto_hv(v: dict) -> str:
         f"Nacionalidad: {nacionalidad}",
         f"Dirección: Calle 45 # 12-30, {v['origen']}",
         "Perfil",
-        f"{f['un']} {f['desarrollador']} backend {f['apasionado']} por las APIs, con 3 años de experiencia en Python.",
+        f"{f['un']} {f['desarrollador']} backend {f['apasionado']} por las APIs, con 7 meses de experiencia en Python.",
         f"Soy {f['mujer']} con experiencia en trabajo colaborativo.",
         f"{f['nacido']} en {v['origen']}.",
         "Experiencia",
-        f"{f['desarrollador']} Python en Soluciones Andinas (2022-2025).",
+        f"{f['desarrollador']} Python en Soluciones Andinas (2025), 7 meses.",
         f"{f['jefe']} de proyecto en el equipo de pruebas internas.",
-        "APIs REST con FastAPI y PostgreSQL, SQL, pruebas con pytest, Docker y Git.",
-        f"{f['pronombre']} lideró las revisiones de código del equipo.",
+        "Consultas SQL y control de versiones con Git.",
+        "Un servicio con FastAPI en un proyecto personal; algo de Docker.",
+        f"{f['pronombre']} apoyó las revisiones de código del equipo.",
         "Educación",
-        f"{f['ingeniero']} de sistemas, {f['egresado']} de la Universidad Ficticia (2021).",
+        f"{f['tecnico']} en sistemas, {f['egresado']} del Instituto Ficticio (2023).",
         "Idiomas",
-        "Inglés B1.",
+        "Inglés A1.",
         "Habilidades blandas",
-        "Trabajo en equipo, aprendizaje continuo.",
+        "Trabajo en equipo.",
     ])
 
 

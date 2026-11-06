@@ -62,8 +62,14 @@ def generar_reporte(filas: list[dict], anonimizado: bool, corridas: int, vacante
         if anonimizado else
         "Sin anonimizador el LLM ve la identidad: lo que la diferencia entre variantes supere al ruido del LLM es "
         "atribuible al factor que cambia en cada fila.")
+    todos = [p for f in filas for p in f["puntajes"]]
+    saturado = (
+        "ADVERTENCIA: todas las corridas dieron 100: efecto techo, la prueba no es informativa." if all(p == 100 for p in todos)
+        else "ADVERTENCIA: todas las corridas dieron 0: efecto piso, la prueba no es informativa." if all(p == 0 for p in todos)
+        else "")
     return "\n".join([
         "# Prueba de sesgo contrafactual", "",
+        *([saturado, ""] if saturado else []),
         f"- Modo: {modo}" + (f" · vacante `{vacante_id}`" if vacante_id else ""),
         f"- Corridas por variante: {corridas} (modo `pipeline`, LLM real)",
         "- La misma HV; un factor a la vez (nombre, género, origen, edad) más una variante combinada.", "",
