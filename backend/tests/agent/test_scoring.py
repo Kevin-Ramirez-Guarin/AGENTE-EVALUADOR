@@ -153,7 +153,7 @@ def test_knockout_topa_en_40():
 
 
 def test_knockout_no_sube_puntajes_bajos():
-    res = evaluar(perfil(), vacante())
+    res = evaluar(perfil(), vacante(blandas=["Empatía"], nivel_educativo_min="profesional"))
     assert res.puntaje_total < 40 and not res.cumple_obligatorios
 
 
@@ -187,7 +187,7 @@ def test_explicacion_son_2_o_3_frases():
 
 
 # --- mejor vacante ---------------------------------------------------------
-V_OTRA = vacante(id="otra", requisitos_obligatorios=["Java"])
+V_OTRA = vacante(id="otra", requisitos_obligatorios=["Java"], deseables=["Rust"])  # 89.5 para un perfil con Java
 
 
 def test_mejor_vacante_devuelve_otra_con_75_o_mas_y_mayor():
