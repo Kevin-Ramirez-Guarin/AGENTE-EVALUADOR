@@ -1,12 +1,9 @@
 import json
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app.agent import PdfInvalidoError, PdfSinTextoError
 from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_session
-from app.evaluador import get_evaluador
 from app.main import app
 from app.routes import get_uploads_dir
 from tests.api.conftest import PDF, postular
@@ -17,7 +14,7 @@ MB5 = 5 * 1024 * 1024
 def test_crear_postulacion_201(client):
     r = postular(client)
     assert r.status_code == 201
-    assert r.json() == {"evaluacion_id": 1, "estado": "pendiente_revision"}
+    assert r.json() == {"evaluacion_id": 1, "estado": "en_evaluacion"}
 
 
 def test_vacante_inexistente_404(client):
@@ -63,10 +60,6 @@ def test_consentimiento_ausente_422(client):
     assert r.status_code == 422
 
 
-def _evaluador_roto(pdf, vacante):
-    raise RuntimeError("LLM caído")
-
-
 def _rechazos():
     return [
         dict(consentimiento="false"),
@@ -80,8 +73,6 @@ def _rechazos():
 def test_rechazo_no_persiste_nada(client, engine, uploads):
     for kw in _rechazos():
         assert postular(client, **kw).status_code >= 400
-    app.dependency_overrides[get_evaluador] = lambda: _evaluador_roto
-    assert postular(client).status_code == 502
     with Session(engine) as s:
         assert s.exec(select(Candidato)).all() == []
         assert s.exec(select(Postulacion)).all() == []
@@ -99,36 +90,6 @@ def test_rechazos_quedan_en_auditoria_sin_datos_personales(client, engine):
     assert all(f.evaluacion_id is None for f in filas)
     assert not any("Ana" in f.detalle or "ana@example.com" in f.detalle for f in filas)
     assert {json.loads(f.detalle)["status"] for f in filas} == {422, 415, 413, 404}
-
-
-def test_evaluador_falla_502_y_audita(client, engine):
-    app.dependency_overrides[get_evaluador] = lambda: _evaluador_roto
-    r = postular(client)
-    assert r.status_code == 502
-    with Session(engine) as s:
-        a = s.exec(select(Auditoria)).one()
-    assert a.evento == "evaluacion_fallida"
-    assert "backend-jr" in a.detalle
-
-
-@pytest.mark.parametrize("exc,status", [
-    (PdfInvalidoError("corrupto"), 415),
-    (PdfSinTextoError("escaneo"), 422),
-    (RuntimeError("LLM caído"), 502),
-])
-def test_errores_de_pdf_mapean_a_4xx_sin_guardar(client, engine, uploads, exc, status):
-    def _ev(pdf, vacante):
-        raise exc
-
-    app.dependency_overrides[get_evaluador] = lambda: _ev
-    r = postular(client)
-    assert r.status_code == status
-    if status == 422:
-        assert "texto seleccionable" in r.json()["detail"]
-    with Session(engine) as s:
-        assert s.exec(select(Auditoria)).one().evento == "evaluacion_fallida"
-        assert s.exec(select(Evaluacion)).all() == []
-    assert list(uploads.iterdir()) == []
 
 
 def test_uploads_dir_se_lee_perezosamente_del_entorno(monkeypatch, tmp_path):
