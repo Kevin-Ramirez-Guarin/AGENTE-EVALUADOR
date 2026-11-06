@@ -48,6 +48,7 @@ Abre http://localhost:5173: portal del candidato en `/vacantes`, panel del reclu
 | Variable | Valores | Efecto |
 |---|---|---|
 | `EVALUADOR` | `real` (defecto) · `falso` | `falso` usa un evaluador simulado: **corre sin Gemini ni créditos**. El puntaje sale de los bytes del PDF, así que no refleja la HV |
+| `NOTIFICADOR` | vacío (defecto) · `falso` · `deshabilitado` | Vacío: Gmail y Calendar reales si existe `backend/token.json`. `falso` o `deshabilitado`: no envía nada real (ensayos y e2e) |
 | `MODO_EVALUACION` | `agente` (defecto) · `pipeline` | `agente` orquesta las herramientas con LangChain (~15–27 s por HV); `pipeline` hace una sola llamada al LLM, más rápido y barato |
 | `GEMINI_MODEL` | `gemini-3.1-flash-lite` | Google renombra los modelos seguido |
 | `DATABASE_URL`, `UPLOADS_DIR` | opcionales | BD SQLite y carpeta de PDF (por defecto `backend/agente.db` y `backend/uploads/`) |

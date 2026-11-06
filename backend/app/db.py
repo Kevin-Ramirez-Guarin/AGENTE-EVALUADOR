@@ -45,6 +45,9 @@ class Evaluacion(SQLModel, table=True):
     evaluacion_iniciada_at: datetime | None = Field(default_factory=_now)
     decidido_por: str | None = None
     motivo: str | None = None
+    # Entrevista agendada al aprobar: inicio ISO con zona horaria y enlace de Meet.
+    entrevista_inicio: str | None = None
+    entrevista_link: str | None = None
 
 
 class Auditoria(SQLModel, table=True):
@@ -70,6 +73,20 @@ def make_engine(url: str | None = None):
     return engine
 
 
+def crear_esquema(engine) -> None:
+    """Crea las tablas y, en una BD SQLite de una versión anterior, agrega las columnas nulas que falten."""
+    SQLModel.metadata.create_all(engine)
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as c:
+        for tabla in SQLModel.metadata.sorted_tables:  # nombres internos, no datos del usuario
+            existentes = {r[1] for r in c.exec_driver_sql(f"PRAGMA table_info({tabla.name})")}
+            for col in tabla.columns:
+                if col.name not in existentes and col.nullable:
+                    tipo = col.type.compile(engine.dialect)
+                    c.exec_driver_sql(f"ALTER TABLE {tabla.name} ADD COLUMN {col.name} {tipo}")
+
+
 _engine = None
 
 
@@ -77,7 +94,7 @@ def get_engine():
     global _engine
     if _engine is None:
         _engine = make_engine()
-        SQLModel.metadata.create_all(_engine)
+        crear_esquema(_engine)
     return _engine
 
 

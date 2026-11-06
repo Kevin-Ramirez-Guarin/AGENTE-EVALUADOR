@@ -20,6 +20,8 @@
 - **Kevin (opcional):** sumar "maquetador/a" y similares al neutralizador; mensaje "texto insuficiente" para HV casi vacías.
 
 ## Hecho
+- 2026-11-06 · **Rebranding a Giveaway y rediseño del frontend** fusionados (PRs #22 y #23).
+- 2026-11-06 · **Entrevista en el perfil**: la fecha y el enlace de Meet quedan guardados y se ven en `/panel/:id` con un botón para unirse.
 - 2026-11-06 · **Gmail + Calendar con Google real**: postulación → Gemini (ENTREVISTA, 100) → decisión → correo e invitación con Meet; auditoría `notificacion_enviada` (informe §8.4).
 - 2026-11-06 · **Sprint 4** fusionado (PRs #16 a #20).
 - 2026-11-06 · **Sprint 3** fusionado (PRs #12 a #15).
@@ -31,6 +33,7 @@
 - 2026-11-06 · F0, plan v0.2, `CLAUDE.md` y `ONBOARDING.md` (PR #1).
 
 ## Decisiones
+- 2026-11-06 · `GET /evaluaciones/{id}` suma `entrevista` (aditivo; pendiente de revisión de los tres). `NOTIFICADOR=falso|deshabilitado` manda sobre `token.json`: las e2e y los ensayos nunca envían correos reales.
 - 2026-11-06 · **Rebranding a Giveaway** (plataforma de tours con guías locales). `Vacante` suma `descripcion`, `equipo`, `ubicacion` y `modalidad`, opcionales y sin efecto en el puntaje; requisitos y pesos no cambian. Cambio de contrato pendiente de revisión por los tres.
 - 2026-11-06 · Citas legales verificadas (sin abogado). Cambios de fondo: la **T-323/2024** trata el uso de ChatGPT por un juez, así que se cita por analogía; la **Circular 002/2024 SIC** exige estudio de impacto solo si el riesgo es alto; la Ley 1482/1752 no nombra "origen" sino nacionalidad y raza; **no hay ley de IA** en Colombia (PL 025/2026 Cámara sin primer debate); Gemini en Vertex es *transmisión* a un encargado (Decreto 1377, arts. 24–25).
 - 2026-11-06 · El agente LangChain es el modo por defecto, porque es requisito académico. `MODO_EVALUACION=pipeline` existe para cuando la latencia o el costo importan (1 llamada al LLM en vez de ~5).

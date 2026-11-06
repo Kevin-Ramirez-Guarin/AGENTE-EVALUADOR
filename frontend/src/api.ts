@@ -87,6 +87,11 @@ export interface EvaluacionResumen {
   estado: EstadoEvaluacion
 }
 
+export interface Entrevista {
+  inicio: string
+  meet_link: string
+}
+
 export interface EvaluacionDetalle {
   id: number
   vacante_id: string
@@ -96,6 +101,7 @@ export interface EvaluacionDetalle {
   veredicto_final: Veredicto | null
   estado: EstadoEvaluacion
   error: string | null
+  entrevista?: Entrevista | null // se guarda al aprobar ENTREVISTA
 }
 
 export interface DecisionInput {
@@ -108,7 +114,7 @@ export interface DecisionRespuesta {
   id: number
   veredicto_final: Veredicto
   estado: string
-  entrevista: { inicio: string; meet_link: string } | null
+  entrevista: Entrevista | null
 }
 
 export interface FiltroEvaluaciones {
@@ -204,7 +210,7 @@ const MOCK_DETALLE_15: EvaluacionDetalle = {
   estado: 'error_evaluacion',
   error: 'El servicio de IA no respondió a tiempo.',
 }
-const MOCK_DETALLE_16: EvaluacionDetalle = { ...MOCK_DETALLE_12, id: 16, candidato: 'Marta Ruiz', veredicto_final: 'ENTREVISTA', estado: 'decidida' }
+const MOCK_DETALLE_16: EvaluacionDetalle = { ...MOCK_DETALLE_12, id: 16, candidato: 'Marta Ruiz', veredicto_final: 'ENTREVISTA', estado: 'decidida', entrevista: { inicio: '2026-11-09T10:00:00-05:00', meet_link: 'https://meet.google.com/xxx-xxxx-xxx' } }
 const MOCK_DETALLES = [MOCK_DETALLE_12, MOCK_DETALLE_13, MOCK_DETALLE_16, MOCK_DETALLE_14, MOCK_DETALLE_15]
 const MOCK_ENTREVISTA = { inicio: '2026-11-09T10:00:00-05:00', meet_link: 'https://meet.google.com/xxx-xxxx-xxx' }
 

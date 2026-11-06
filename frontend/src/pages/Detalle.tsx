@@ -9,6 +9,7 @@ import {
   type CriterioDetalle,
   type EstadoEvaluacion,
   type DecisionRespuesta,
+  type Entrevista,
   type EvaluacionDetalle,
   type Habilidad,
   type NombreCriterio,
@@ -18,8 +19,8 @@ import {
 } from '../api'
 import { ETIQUETA } from '../criterios'
 import { bandaPuntaje, COLOR_BANDA, ESTADOS, useRefresco, VEREDICTOS } from '../estados'
-import { boton, campoClase, enlace } from '../estilos'
-import { Campo, EstadoInsignia, IconoAlerta, IconoCheck, IconoMenos, IconoVolver } from '../ui'
+import { boton, campoClase } from '../estilos'
+import { Campo, EstadoInsignia, IconoAlerta, IconoCalendario, IconoCheck, IconoMenos, IconoVolver } from '../ui'
 
 const OPCIONES: Veredicto[] = ['ENTREVISTA', 'REVISION_HUMANA', 'NO_CONTINUA']
 const CLAVE_RECLUTADOR = 'reclutador'
@@ -176,6 +177,39 @@ function PerfilCandidato({ p }: { p: Perfil }) {
   )
 }
 
+// La entrevista se agenda en hora de Bogotá; se muestra igual sin importar la zona del navegador.
+const ZONA_ENTREVISTA = 'America/Bogota'
+const formatear = (iso: string, opciones: Intl.DateTimeFormatOptions) =>
+  new Intl.DateTimeFormat('es-CO', { ...opciones, timeZone: ZONA_ENTREVISTA }).format(new Date(iso))
+
+function TarjetaEntrevista({ e }: { e: Entrevista }) {
+  const seguro = e.meet_link.startsWith('https://')
+  return (
+    <section aria-labelledby="h-entrevista" className="flex flex-wrap items-center justify-between gap-5 rounded-xl bg-caribe-50 p-5 ring-1 ring-caribe-200 sm:p-6">
+      <div className="flex min-w-0 items-start gap-4">
+        <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-xl bg-caribe-700 text-white">
+          <IconoCalendario className="size-6" />
+        </span>
+        <div className="min-w-0">
+          <h2 id="h-entrevista" className={h2}>Entrevista agendada</h2>
+          <p className="mt-1 font-semibold text-niebla-900 first-letter:uppercase">{formatear(e.inicio, { dateStyle: 'full' })}</p>
+          <p className="text-niebla-700">
+            <span className="tabular-nums">{formatear(e.inicio, { hour: 'numeric', minute: '2-digit' })}</span> (hora de Colombia) · Google Meet
+          </p>
+          {seguro && <p className="mt-1 text-sm break-all text-niebla-600">{e.meet_link}</p>}
+        </div>
+      </div>
+      {seguro ? (
+        <a href={e.meet_link} target="_blank" rel="noopener noreferrer" className={`${boton('primario')} w-full sm:w-auto`}>
+          Unirse a la reunión<span className="sr-only"> en Google Meet (abre en otra pestaña)</span>
+        </a>
+      ) : (
+        <p className="text-sm text-niebla-700">Enlace de Meet no disponible.</p>
+      )}
+    </section>
+  )
+}
+
 const MENSAJE_ERROR: Record<number, string> = {
   409: 'Esta evaluación ya fue decidida; no se puede decidir de nuevo.',
   422: 'Datos inválidos: el motivo es obligatorio si tu veredicto difiere del sugerido, y escribe tu nombre.',
@@ -239,6 +273,7 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
   const decidida = decision !== null || ev.estado === 'decidida'
   const estado = decision?.estado ?? ev.estado
   const difiere = !!resultado && veredicto !== resultado.veredicto_sugerido
+  const entrevista = decision?.entrevista ?? ev.entrevista ?? null
 
   // 202 o 409: en ambos casos se recarga para mostrar el estado real.
   async function reintentar() {
@@ -271,16 +306,6 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
     <div role="status" className="space-y-1 rounded-lg bg-cafetal-50 p-4 text-sm text-cafetal-800 ring-1 ring-cafetal-100">
       <p className="font-semibold">Estado: {ESTADOS[estado as EstadoEvaluacion]?.texto ?? estado}</p>
       <p>Veredicto final: {textoVeredicto(final)}</p>
-      {decision?.entrevista && (
-        <p>
-          Entrevista: {new Date(decision.entrevista.inicio).toLocaleString('es-CO')} —{' '}
-          {decision.entrevista.meet_link.startsWith('https://') ? (
-            <a href={decision.entrevista.meet_link} target="_blank" rel="noopener noreferrer" className={enlace}>Enlace de Meet</a>
-          ) : (
-            'enlace de Meet no disponible'
-          )}
-        </p>
-      )}
     </div>
   )
 
@@ -310,6 +335,8 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
           <button type="button" onClick={reintentar} className={boton('peligro', 'compacto')}>Reintentar</button>
         </div>
       )}
+
+      {entrevista && <TarjetaEntrevista e={entrevista} />}
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr]">
         {resultado && <div className="lg:col-start-2 lg:row-start-1"><Resumen r={resultado} /></div>}
