@@ -41,6 +41,33 @@ describe('Vacantes', () => {
     expect(screen.getByRole('link', { name: /aplicar/i })).toHaveAttribute('href', '/aplicar/backend-jr')
   })
 
+  it('muestra equipo, ubicación, modalidad y descripción cuando la API los envía', async () => {
+    vi.mocked(api.getVacantes).mockResolvedValue([
+      {
+        ...vacante,
+        equipo: 'Producto y Tecnología',
+        ubicacion: 'Medellín, Colombia',
+        modalidad: 'Híbrido · Medellín',
+        descripcion: 'Construyes el motor de reservas de tours.',
+      },
+    ])
+    renderPage()
+
+    await screen.findByRole('heading', { name: vacante.titulo })
+    expect(screen.getByRole('list', { name: /detalles de la vacante/i })).toBeInTheDocument()
+    for (const t of ['Producto y Tecnología', 'Medellín, Colombia', 'Híbrido · Medellín', 'Construyes el motor de reservas de tours.']) {
+      expect(screen.getByText(t)).toBeInTheDocument()
+    }
+  })
+
+  it('sin los campos opcionales (o vacíos) no muestra huecos ni etiquetas sueltas', async () => {
+    vi.mocked(api.getVacantes).mockResolvedValue([{ ...vacante, equipo: '', descripcion: '' }])
+    renderPage()
+
+    await screen.findByRole('heading', { name: vacante.titulo })
+    expect(screen.queryByRole('list', { name: /detalles de la vacante/i })).not.toBeInTheDocument()
+  })
+
   it('muestra un mensaje de error si la API falla', async () => {
     vi.mocked(api.getVacantes).mockRejectedValue(new Error('boom'))
     renderPage()
