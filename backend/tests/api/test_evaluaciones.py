@@ -1,8 +1,9 @@
+from sqlalchemy import update
 from sqlmodel import Session, select
 
-from app.db import Auditoria, Evaluacion
+from app.db import Auditoria, Evaluacion, get_session
 from app.evaluador import evaluador_falso
-from app.main import _cargar_vacantes
+from app.main import _cargar_vacantes, app
 from tests.api.conftest import PDF, postular
 
 
@@ -103,6 +104,32 @@ def test_decision_ya_decidida_409(client):
     body = {"veredicto": _sugerido(client), "reclutador": "x"}
     client.post("/evaluaciones/1/decision", json=body)
     assert client.post("/evaluaciones/1/decision", json=body).status_code == 409
+
+
+def test_decision_concurrente_solo_gana_una(client, engine):
+    postular(client)
+    sugerido = _sugerido(client)
+
+    class SesionCarrera(Session):
+        """Otro reclutador decide justo después de que esta petición lee la evaluación."""
+        def get(self, *a, **kw):
+            ev = super().get(*a, **kw)
+            with Session(engine) as otra:
+                otra.exec(update(Evaluacion).values(
+                    estado="decidida", veredicto_final=sugerido, decidido_por="primero"))
+                otra.commit()
+            return ev
+
+    def _session():
+        with SesionCarrera(engine) as s:
+            yield s
+
+    app.dependency_overrides[get_session] = _session
+    r = client.post("/evaluaciones/1/decision", json={"veredicto": sugerido, "reclutador": "segundo"})
+    assert r.status_code == 409
+    with Session(engine) as s:
+        assert s.get(Evaluacion, 1).decidido_por == "primero"
+        assert s.exec(select(Auditoria).where(Auditoria.evento == "decision")).all() == []
 
 
 def test_decision_404(client):
