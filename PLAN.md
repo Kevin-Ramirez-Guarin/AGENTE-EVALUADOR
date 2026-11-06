@@ -233,7 +233,7 @@ Como cada track toca carpetas distintas, casi no habrá conflictos de merge.
   feature/añadir-pdf
 
   El backend ya recibe la hoja de vida en PDF y saca su texto con pypdf.
-  Si el PDF viene escaneado y no trae texto, lo marcamos para que Gemini lo lea directo.
+  Si el PDF viene escaneado y no trae texto, se rechaza con un mensaje claro.
   ```
 - **PRs a `main`:** CI en verde, 1 revisión de otro integrante y `docs/ESTADO.md` actualizado. Nadie hace push directo a `main`.
 - **Secretos:** jamás en el repo. Van en `.env`, y el `.gitignore` ya los bloquea.
@@ -252,5 +252,5 @@ Como cada track toca carpetas distintas, casi no habrá conflictos de merge.
 | No está confirmado que los créditos de $300 apliquen a express mode. | En F0 se mide el costo real de una evaluación. Con modelos *flash-lite* una HV cuesta < $0,01. |
 | Google cambia o retira modelos (los 2.5 se retiraron el 20-oct-2026). | El modelo va en la variable `GEMINI_MODEL`. |
 | Los tokens OAuth en modo testing caducan a los 7 días. | Re-autenticar antes de la demo. Como respaldo, correo por SMTP con contraseña de aplicación. |
-| PDFs escaneados sin texto | Si `pypdf` devuelve poco texto, se envía el PDF directo a Gemini (que lee PDFs). |
+| PDFs escaneados sin texto | Si `pypdf` devuelve poco texto, la postulación se rechaza (422) pidiendo un PDF con texto. OCR o enviar el PDF a Gemini queda como trabajo futuro. |
 | El LLM inventa habilidades. | Cada habilidad exige evidencia textual, y se verifica que la cita exista en la HV. |
