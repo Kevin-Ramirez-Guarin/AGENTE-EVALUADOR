@@ -28,7 +28,7 @@ const Lista = ({ titulo, items }: { titulo: string; items: string[] }) =>
     <div>
       <h4 className="text-sm font-semibold text-slate-700">{titulo}</h4>
       <ul className="list-inside list-disc text-sm">
-        {items.map((i) => <li key={i}>{i}</li>)}
+        {items.map((i, n) => <li key={n}>{i}</li>)}
       </ul>
     </div>
   )
@@ -38,8 +38,8 @@ const Habilidades = ({ titulo, items }: { titulo: string; items: Habilidad[] }) 
     <h3 className="font-semibold">{titulo}</h3>
     {items.length === 0 && <p className="text-sm text-slate-600">Sin datos.</p>}
     <ul className="space-y-1 text-sm">
-      {items.map((h) => (
-        <li key={h.nombre}>
+      {items.map((h, n) => (
+        <li key={n}>
           <strong>{h.nombre}</strong> ({h.nivel}) — evidencia: <q>{h.evidencia}</q>
         </li>
       ))}
@@ -51,7 +51,10 @@ function Criterio({ c }: { c: CriterioDetalle }) {
   const nombre = ETIQUETA[c.criterio]
   return (
     <li className="space-y-2 rounded border border-slate-200 bg-white p-3">
-      <h3 className="font-semibold">{nombre} <span className="text-sm font-normal text-slate-600">Peso {Math.round(c.peso * 100)} %</span></h3>
+      <h3 className="font-semibold">
+        {nombre}
+        {c.peso > 0 && <span className="text-sm font-normal text-slate-600"> Peso {Math.round(c.peso * 100)} %</span>}
+      </h3>
       <div className="flex items-center gap-2">
         <div
           role="meter"
@@ -64,7 +67,7 @@ function Criterio({ c }: { c: CriterioDetalle }) {
         >
           <div className="h-full bg-indigo-700" style={{ width: `${c.puntaje}%` }} />
         </div>
-        <span className="w-16 text-sm">{c.puntaje} / 100</span>
+        <span aria-hidden="true" className="w-16 text-sm">{c.puntaje} / 100</span>
       </div>
       <Lista titulo="Cumplido" items={c.cumplidos} />
       <Lista titulo="Faltante" items={c.faltantes} />
@@ -88,9 +91,13 @@ const MENSAJE_ERROR: Record<number, string> = {
   404: 'La evaluación no existe.',
 }
 
+// `key={id}` reinicia todo el estado (formulario, decisión, errores) al cambiar de evaluación.
 export function Detalle() {
   const { id } = useParams()
-  const evalId = Number(id)
+  return <DetalleEvaluacion key={id} evalId={Number(id)} />
+}
+
+function DetalleEvaluacion({ evalId }: { evalId: number }) {
   const [ev, setEv] = useState<EvaluacionDetalle | null>(null)
   const [errorCarga, setErrorCarga] = useState('')
   const [veredicto, setVeredicto] = useState<Veredicto>('ENTREVISTA')
@@ -101,10 +108,14 @@ export function Detalle() {
   const [decision, setDecision] = useState<DecisionRespuesta | null>(null)
 
   useEffect(() => {
+    let vigente = true
     getEvaluacion(evalId).then(
-      (e) => (setEv(e), setVeredicto(e.resultado.veredicto_sugerido)),
-      (e) => setErrorCarga(e instanceof ApiError && e.status === 404 ? MENSAJE_ERROR[404] : 'No pudimos cargar la evaluación. Intenta de nuevo más tarde.'),
+      (e) => vigente && (setEv(e), setVeredicto(e.resultado.veredicto_sugerido)),
+      (e) => vigente && setErrorCarga(e instanceof ApiError && e.status === 404 ? MENSAJE_ERROR[404] : 'No pudimos cargar la evaluación. Intenta de nuevo más tarde.'),
     )
+    return () => {
+      vigente = false
+    }
   }, [evalId])
 
   if (errorCarga) return <p role="alert" className="text-red-700">{errorCarga}</p>
@@ -195,7 +206,11 @@ export function Detalle() {
             {decision?.entrevista && (
               <p>
                 Entrevista: {new Date(decision.entrevista.inicio).toLocaleString('es-CO')} —{' '}
-                <a href={decision.entrevista.meet_link} className="text-indigo-800 underline">Enlace de Meet</a>
+                {decision.entrevista.meet_link.startsWith('https://') ? (
+                  <a href={decision.entrevista.meet_link} target="_blank" rel="noopener noreferrer" className="text-indigo-800 underline">Enlace de Meet</a>
+                ) : (
+                  'enlace de Meet no disponible'
+                )}
               </p>
             )}
           </div>
