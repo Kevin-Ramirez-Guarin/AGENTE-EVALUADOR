@@ -54,6 +54,18 @@ def test_pesos_con_error_de_flotante_se_aceptan():
     assert _vacante(pesos={"tecnico": 0.1, "experiencia": 0.2, "blandas": 0.3, "educacion": 0.2, "idiomas": 0.2})
 
 
+def test_vacante_sin_descripcion_sigue_siendo_valida():
+    v = _vacante()
+    assert (v.descripcion, v.equipo, v.ubicacion, v.modalidad) == ("", "", "", "")
+
+
+def test_vacante_acepta_descripcion_equipo_ubicacion_y_modalidad():
+    v = _vacante(descripcion="Construyes el motor de reservas.", equipo="Producto y Tecnología",
+                 ubicacion="Medellín, Colombia", modalidad="Híbrido · Medellín")
+    assert v.descripcion.startswith("Construyes") and v.modalidad == "Híbrido · Medellín"
+    assert v.equipo == "Producto y Tecnología" and v.ubicacion == "Medellín, Colombia"
+
+
 def test_nivel_educativo_invalido_falla():
     with pytest.raises(ValidationError):
         _vacante(nivel_educativo_min="doctor")

@@ -56,6 +56,11 @@ class Vacante(BaseModel):
     nivel_educativo_min: NivelEducativo
     idiomas: list[Idioma]
     pesos: Pesos
+    # Contexto para el candidato; no entra al puntaje.
+    descripcion: str = ""
+    equipo: str = ""
+    ubicacion: str = ""
+    modalidad: str = ""
 
 
 class Veredicto(str, Enum):

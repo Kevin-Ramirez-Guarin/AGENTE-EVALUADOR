@@ -17,7 +17,7 @@ Está escrita en lenguaje claro y explica:
 - Los 5 criterios con su peso: los de la vacante si llega `?vacante=`, o los genéricos de PLAN §5 (45/25/15/10/5 %).
 - Que la IA solo extrae información y sugiere, y que **una persona decide**.
 - Que antes de que la IA lea la hoja de vida se quitan los datos de identificación y contacto (nombre, correo, teléfono, documento, edad, estado civil y origen) y se neutralizan las palabras que revelan el género.
-- Los derechos de la Ley 1581 (conocer, actualizar, rectificar, revocar la autorización y pedir revisión humana) y cómo ejercerlos: escribir a `privacidad@nexodigital.example` (correo ficticio de Nexo Digital).
+- Los derechos de la Ley 1581 (conocer, actualizar, rectificar, revocar la autorización y pedir revisión humana) y cómo ejercerlos: escribir a `privacidad@giveaway.example` (correo ficticio de Giveaway).
 
 ## Explicación al reclutador
 - El detalle muestra, por criterio: puntaje con barra y texto, peso, requisitos cumplidos y faltantes, y la evidencia citada de la hoja de vida.

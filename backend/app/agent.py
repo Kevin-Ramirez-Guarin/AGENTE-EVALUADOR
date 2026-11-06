@@ -91,7 +91,7 @@ def verificar_evidencias(perfil: PerfilCandidato, texto: str) -> list[str]:
 
 
 PROMPT_AGENTE = """\
-Eres el agente evaluador de Nexo Digital. Evalúas una hoja de vida llamando a las herramientas, \
+Eres el agente evaluador de Giveaway. Evalúas una hoja de vida llamando a las herramientas, \
 en este orden exacto y una sola vez cada una: extraer_texto_pdf, extraer_perfil, \
 evaluar_contra_vacante, comparar_otras_vacantes. Las herramientas no reciben argumentos. \
 No calcules ni inventes puntajes: los calcula el sistema. Al terminar responde solo "listo". \

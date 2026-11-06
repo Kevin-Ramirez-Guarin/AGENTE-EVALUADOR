@@ -31,6 +31,7 @@
 - 2026-11-06 · F0, plan v0.2, `CLAUDE.md` y `ONBOARDING.md` (PR #1).
 
 ## Decisiones
+- 2026-11-06 · **Rebranding a Giveaway** (plataforma de tours con guías locales). `Vacante` suma `descripcion`, `equipo`, `ubicacion` y `modalidad`, opcionales y sin efecto en el puntaje; requisitos y pesos no cambian. Cambio de contrato pendiente de revisión por los tres.
 - 2026-11-06 · Citas legales verificadas (sin abogado). Cambios de fondo: la **T-323/2024** trata el uso de ChatGPT por un juez, así que se cita por analogía; la **Circular 002/2024 SIC** exige estudio de impacto solo si el riesgo es alto; la Ley 1482/1752 no nombra "origen" sino nacionalidad y raza; **no hay ley de IA** en Colombia (PL 025/2026 Cámara sin primer debate); Gemini en Vertex es *transmisión* a un encargado (Decreto 1377, arts. 24–25).
 - 2026-11-06 · El agente LangChain es el modo por defecto, porque es requisito académico. `MODO_EVALUACION=pipeline` existe para cuando la latencia o el costo importan (1 llamada al LLM en vez de ~5).
 - 2026-11-06 · Los números del resultado salen del `contexto` de las herramientas y de `scoring.py`, nunca del texto del LLM.
