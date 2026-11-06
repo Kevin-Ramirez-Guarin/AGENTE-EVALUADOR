@@ -4,6 +4,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.db import get_session
 from app.main import app
+from app.notificador import NotificadorDeshabilitado, get_notificador
 from app.routes import get_uploads_dir
 
 PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\n%%EOF"
@@ -33,6 +34,8 @@ def client(engine, uploads):
 
     app.dependency_overrides[get_session] = _session
     app.dependency_overrides[get_uploads_dir] = lambda: uploads
+    # Por defecto nunca se toca Google en las pruebas, aunque exista un token.json local.
+    app.dependency_overrides[get_notificador] = lambda: NotificadorDeshabilitado()
     yield TestClient(app)
     app.dependency_overrides.clear()
 
