@@ -7,6 +7,7 @@ from typing import NoReturn
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import update
 from sqlmodel import Session, select
 
 from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_session
@@ -156,14 +157,19 @@ def decidir(evaluacion_id: int, body: DecisionIn, session: Session = Depends(get
         raise HTTPException(409, "La evaluación ya fue decidida")
     if body.veredicto.value != ev.veredicto_ia and not (body.motivo or "").strip():
         raise HTTPException(422, "Se requiere motivo si el veredicto difiere del sugerido")
-    ev.veredicto_final = body.veredicto.value
-    ev.estado = "decidida"
-    ev.decidido_por = body.reclutador
-    ev.motivo = body.motivo
-    session.add(ev)
-    _auditar(session, "decision", ev.id,
-             {"veredicto_ia": ev.veredicto_ia, "veredicto_final": ev.veredicto_final,
+    # UPDATE condicional: solo una decisión concurrente gana.
+    res = session.connection().execute(
+        update(Evaluacion)
+        .where(Evaluacion.id == evaluacion_id, Evaluacion.estado == "pendiente_revision")
+        .values(veredicto_final=body.veredicto.value, estado="decidida",
+                decidido_por=body.reclutador, motivo=body.motivo))
+    if res.rowcount == 0:
+        session.rollback()
+        raise HTTPException(409, "La evaluación ya fue decidida")
+    _auditar(session, "decision", evaluacion_id,
+             {"veredicto_ia": ev.veredicto_ia, "veredicto_final": body.veredicto.value,
               "motivo": body.motivo, "reclutador": body.reclutador})
     session.commit()
     # Sprint actual: no se envían correos ni se agenda; `entrevista` queda en null.
-    return {"id": ev.id, "veredicto_final": ev.veredicto_final, "estado": ev.estado, "entrevista": None}
+    return {"id": evaluacion_id, "veredicto_final": body.veredicto.value, "estado": "decidida",
+            "entrevista": None}
