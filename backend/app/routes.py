@@ -1,5 +1,6 @@
 """Rutas de postulaciones y evaluaciones (docs/api.md)."""
 import json
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -32,7 +33,8 @@ UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 
 
 def get_uploads_dir() -> Path:
-    return UPLOADS_DIR
+    # Lectura perezosa: pruebas y e2e pueden cambiar la variable sin reimportar.
+    return Path(os.environ["UPLOADS_DIR"]) if os.environ.get("UPLOADS_DIR") else UPLOADS_DIR
 
 
 def _auditar(session: Session, evento: str, evaluacion_id: int | None, detalle: dict) -> None:
