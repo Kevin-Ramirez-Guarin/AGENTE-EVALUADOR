@@ -56,7 +56,7 @@ def test_pesos_con_error_de_flotante_se_aceptan():
 
 def test_nivel_educativo_invalido_falla():
     with pytest.raises(ValidationError):
-        _vacante(nivel_educativo="doctor")
+        _vacante(nivel_educativo_min="doctor")
     with pytest.raises(ValidationError):
         _perfil(nivel_educativo="doctor")
 
