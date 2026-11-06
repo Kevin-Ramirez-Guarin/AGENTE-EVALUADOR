@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,6 +9,7 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   getEvaluacion: vi.fn(),
   decidir: vi.fn(),
+  reintentarEvaluacion: vi.fn(),
 }))
 
 const criterio = (c: api.NombreCriterio, puntaje: number): api.CriterioDetalle => ({
@@ -46,6 +47,7 @@ const base: api.EvaluacionDetalle = {
   },
   veredicto_final: null,
   estado: 'pendiente_revision',
+  error: null,
 }
 
 const renderAt = (id: number) =>
@@ -74,7 +76,10 @@ describe('Detalle', () => {
     vi.resetAllMocks()
     localStorage.clear()
   })
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
 
   it('explica la decisión: perfil, habilidades con evidencia, puntaje, obligatorios y sugerencia', async () => {
     await setup()
@@ -161,11 +166,67 @@ describe('Detalle', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(msg))
   })
 
-  it('si ya está decidida deshabilita el formulario y muestra el veredicto final', async () => {
+  it('si ya está decidida no muestra el formulario y sí el veredicto final', async () => {
     await setup({ ...base, estado: 'decidida', veredicto_final: 'REVISION_HUMANA' })
-    expect(screen.getByLabelText(/veredicto/i)).toBeDisabled()
-    expect(screen.getByRole('button', { name: /registrar decisión/i })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /registrar decisión/i })).not.toBeInTheDocument()
     expect(screen.getByText(/veredicto final: REVISION_HUMANA/i)).toBeInTheDocument()
+  })
+
+  it('rotula la nota por criterio como texto para la persona candidata', async () => {
+    await setup()
+    expect(screen.getAllByText(/nota para la persona candidata \(se usa en el correo\)/i)).toHaveLength(2)
+  })
+
+  describe('estados asíncronos', () => {
+    const enCurso: api.EvaluacionDetalle = { ...base, perfil: null, resultado: null, estado: 'en_evaluacion' }
+    const conError: api.EvaluacionDetalle = { ...enCurso, estado: 'error_evaluacion', error: 'El servicio de IA no respondió.' }
+
+    it('en_evaluacion avisa que la IA analiza la HV y no muestra el formulario', async () => {
+      await setup(enCurso)
+      expect(screen.getByText(/la ia está analizando esta hoja de vida/i)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /registrar decisión/i })).not.toBeInTheDocument()
+      expect(screen.queryByText(/puntaje total/i)).not.toBeInTheDocument()
+    })
+
+    it('en_evaluacion se refresca cada 5 s hasta que llega el resultado y limpia el intervalo', async () => {
+      vi.useFakeTimers()
+      vi.mocked(api.getEvaluacion).mockResolvedValue(enCurso)
+      const { unmount } = render(<MemoryRouter initialEntries={['/panel/12']}><Routes><Route path="/panel/:id" element={<Detalle />} /></Routes></MemoryRouter>)
+      await act(() => vi.advanceTimersByTimeAsync(0))
+      expect(api.getEvaluacion).toHaveBeenCalledTimes(1)
+      vi.mocked(api.getEvaluacion).mockResolvedValue(base)
+      await act(() => vi.advanceTimersByTimeAsync(5000))
+      expect(api.getEvaluacion).toHaveBeenCalledTimes(2)
+      expect(screen.getByText(/puntaje total: 82.5/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /registrar decisión/i })).toBeInTheDocument()
+      await act(() => vi.advanceTimersByTimeAsync(15000))
+      expect(api.getEvaluacion).toHaveBeenCalledTimes(2)
+      unmount()
+    })
+
+    it('error_evaluacion muestra el mensaje de error y el botón Reintentar, sin formulario', async () => {
+      await setup(conError)
+      expect(screen.getByRole('alert')).toHaveTextContent('El servicio de IA no respondió.')
+      expect(screen.getByRole('button', { name: /reintentar/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /registrar decisión/i })).not.toBeInTheDocument()
+    })
+
+    it('Reintentar llama a la API y recarga la evaluación', async () => {
+      vi.mocked(api.reintentarEvaluacion).mockResolvedValue(undefined)
+      const user = await setup(conError)
+      vi.mocked(api.getEvaluacion).mockResolvedValue(enCurso)
+      await user.click(screen.getByRole('button', { name: /reintentar/i }))
+      expect(api.reintentarEvaluacion).toHaveBeenCalledWith(12)
+      expect(await screen.findByText(/la ia está analizando/i)).toBeInTheDocument()
+    })
+
+    it('si Reintentar responde 409 recarga el estado actual', async () => {
+      vi.mocked(api.reintentarEvaluacion).mockRejectedValue(new api.ApiError(409, 'x'))
+      const user = await setup(conError)
+      vi.mocked(api.getEvaluacion).mockResolvedValue(base)
+      await user.click(screen.getByRole('button', { name: /reintentar/i }))
+      expect(await screen.findByText(/puntaje total/i)).toBeInTheDocument()
+    })
   })
 
   it('avisa si la evaluación no existe', async () => {
