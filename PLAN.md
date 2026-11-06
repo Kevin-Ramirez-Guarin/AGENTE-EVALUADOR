@@ -56,7 +56,12 @@ Un sistema donde un candidato se postula a una vacante subiendo su hoja de vida 
 
 ## 4. El negocio ficticio
 
-**Nexo Digital S.A.S.** es una empresa de software en Medellín, de 40 personas, que hace productos web para pymes.
+**Giveaway S.A.S.** (marca: Giveaway) es una plataforma colombiana de Medellín, de unas 60 personas, para descubrir y reservar **tours y experiencias con guías locales certificados** en Cartagena, Medellín y la Comuna 13, el Eje Cafetero, el Parque Tayrona, Bogotá y Guatapé. Tiene web y app de reservas, pagos en línea y soporte al viajero 24/7.
+
+- **Equipos:** Producto y Tecnología (~25 personas), Operaciones de tours y alianzas con guías, Soporte al Viajero y Datos.
+- **Por qué contrata ahora:** la temporada alta de diciembre–enero, el lanzamiento de la nueva app de reservas y la expansión a nuevos destinos.
+- **Tagline de empleo:** "Ayúdanos a que más viajeros descubran Colombia con quien mejor la conoce."
+- **Voz:** cercana (tuteo), clara y profesional. Nunca sugiere que la IA decide: la IA recomienda y una persona del equipo de Talento decide.
 
 | Vacante | Imprescindibles (knock-out) | Deseables | Blandas clave |
 |---|---|---|---|
@@ -64,9 +69,9 @@ Un sistema donde un candidato se postula a una vacante subiendo su hoja de vida 
 | Desarrollador/a Frontend (React) | JavaScript, React, HTML/CSS | TypeScript, Tailwind, accesibilidad | Comunicación, atención al detalle |
 | Analista de Datos | SQL, Excel avanzado, estadística básica | Python/pandas, Power BI | Pensamiento analítico, comunicación |
 | QA Tester | Casos de prueba, reporte de bugs | Automatización (Playwright/Selenium), API testing | Rigurosidad, comunicación |
-| Soporte Técnico / Customer Success | Atención al cliente, inglés B1 | Ticketing (Jira/Zendesk), SQL básico | Empatía, resolución de problemas |
+| Soporte al Viajero / Customer Success | Atención al cliente, inglés B1 | Ticketing (Jira/Zendesk), SQL básico | Empatía, resolución de problemas |
 
-Cada vacante vive en `backend/data/vacantes.json` con estos campos: `requisitos_obligatorios`, `deseables`, `blandas`, `experiencia_min_anios`, `nivel_educativo_min`, `idiomas` y `pesos`.
+Cada vacante vive en `backend/data/vacantes.json` con estos campos: `requisitos_obligatorios`, `deseables`, `blandas`, `experiencia_min_anios`, `nivel_educativo_min`, `idiomas` y `pesos`. Además lleva `descripcion`, `equipo`, `ubicacion` y `modalidad` (opcionales, solo informativos: no entran al puntaje).
 
 ## 5. Reglas de negocio (scoring determinístico)
 
@@ -243,7 +248,7 @@ Como cada track toca carpetas distintas, casi no habrá conflictos de merge.
 1. ~~Acceso al repo~~ ✅ resuelto.
 2. **API key de Gemini:** actívala en Vertex AI *express mode* (Google Cloud Console → Vertex AI / "Agent Platform" → Express mode). Nunca la pegues en el chat ni en el repo: va en `backend/.env`.
 3. **OAuth para Gmail y Calendar** (solo hasta F6): en Cloud Console, crea una pantalla de consentimiento en modo *Testing*, agrega tu correo como usuario de prueba y crea un "OAuth client ID" de tipo Desktop. Yo te guío cuando lleguemos.
-4. **Validar el negocio:** confirma si te sirve "Nexo Digital" y las 5 vacantes, o cámbialas.
+4. **Validar el negocio:** confirma si te sirve "Giveaway" y las 5 vacantes, o cámbialas.
 
 ## 14. Riesgos
 

@@ -15,7 +15,7 @@
 
 ## Resumen
 
-Este proyecto construye un MVP de un agente de IA que apoya la selección de personal en una empresa ficticia, Nexo Digital S.A.S. La persona candidata sube su hoja de vida (HV) en PDF y autoriza el tratamiento de sus datos. El sistema quita los datos de identidad y un agente LangChain con Gemini extrae sus competencias como JSON estructurado, cada una con una cita literal de la HV como evidencia. El puntaje no lo calcula el modelo de lenguaje sino reglas fijas en Python, con pesos públicos, un *knock-out* por requisitos obligatorios y umbrales de veredicto. Un reclutador humano revisa la explicación por criterio y decide; solo entonces se envían el correo y la invitación a entrevista. Inspirados en *Gattaca*, pusimos el eje ético en el centro: discriminación algorítmica por género y origen, derecho a la explicación y protección de datos laborales. Los resultados: 410 pruebas de backend con 98 % de cobertura, 41/41 evaluaciones con Gemini real, 11/11 pruebas e2e y una prueba de sesgo contrafactual en la que las 8 variantes de una misma HV obtuvieron 71,7 puntos, con y sin anonimizador. Una HV con *prompt injection* que pedía "puntaje 100" obtuvo 21,7.
+Este proyecto construye un MVP de un agente de IA que apoya la selección de personal en una empresa ficticia, Giveaway S.A.S., una plataforma colombiana de tours con guías locales La persona candidata sube su hoja de vida (HV) en PDF y autoriza el tratamiento de sus datos. El sistema quita los datos de identidad y un agente LangChain con Gemini extrae sus competencias como JSON estructurado, cada una con una cita literal de la HV como evidencia. El puntaje no lo calcula el modelo de lenguaje sino reglas fijas en Python, con pesos públicos, un *knock-out* por requisitos obligatorios y umbrales de veredicto. Un reclutador humano revisa la explicación por criterio y decide; solo entonces se envían el correo y la invitación a entrevista. Inspirados en *Gattaca*, pusimos el eje ético en el centro: discriminación algorítmica por género y origen, derecho a la explicación y protección de datos laborales. Los resultados: 410 pruebas de backend con 98 % de cobertura, 41/41 evaluaciones con Gemini real, 11/11 pruebas e2e y una prueba de sesgo contrafactual en la que las 8 variantes de una misma HV obtuvieron 71,7 puntos, con y sin anonimizador. Una HV con *prompt injection* que pedía "puntaje 100" obtuvo 21,7.
 
 ---
 
@@ -46,13 +46,13 @@ La pregunta que guía el proyecto es: **¿se puede usar IA generativa para apoya
 5. Explicar cada resultado por criterio, en lenguaje claro, al reclutador y a la persona candidata.
 6. Validar el sistema con pruebas automatizadas (unitarias, caja negra, evals con LLM real, e2e, accesibilidad, carga y sesgo).
 
-## 3. Caso de negocio: Nexo Digital S.A.S.
+## 3. Caso de negocio: Giveaway S.A.S.
 
-Nexo Digital es una empresa de software ficticia de Medellín, con 40 personas, que hace productos web para pymes (PLAN §4). Publica sus vacantes en LinkedIn con la opción "Aplicar en sitio externo", que lleva al formulario propio `/aplicar/:id`. No integramos la API de LinkedIn: exige ser *partner* certificado y el *scraping* viola sus términos. Además, el formulario propio permite pedir la autorización de datos que exige la Ley 1581.
+Giveaway es una empresa ficticia de Medellín, con unas 60 personas: una plataforma colombiana para descubrir y reservar tours y experiencias con guías locales certificados (Cartagena, Medellín y la Comuna 13, Eje Cafetero, Parque Tayrona, Bogotá y Guatapé), con web y app de reservas, pagos en línea y soporte al viajero 24/7 (PLAN §4). Sus equipos son Producto y Tecnología (~25 personas), Operaciones de tours y alianzas con guías, Soporte al Viajero y Datos. Contrata ahora por la temporada alta de diciembre–enero, el lanzamiento de la nueva app de reservas y la expansión a nuevos destinos; su lema de empleo es "Ayúdanos a que más viajeros descubran Colombia con quien mejor la conoce". Publica sus vacantes en LinkedIn con la opción "Aplicar en sitio externo", que lleva al formulario propio `/aplicar/:id`. No integramos la API de LinkedIn: exige ser *partner* certificado y el *scraping* viola sus términos. Además, el formulario propio permite pedir la autorización de datos que exige la Ley 1581.
 
 ### 3.1 Vacantes
 
-Las vacantes viven en [`backend/data/vacantes.json`](../backend/data/vacantes.json).
+Las vacantes viven en [`backend/data/vacantes.json`](../backend/data/vacantes.json). Cada una trae además una descripción del rol en Giveaway, el equipo, la ubicación y la modalidad; esos campos son informativos y no entran al puntaje.
 
 | Vacante (`id`) | Obligatorios (*knock-out*) | Deseables | Blandas | Exp. mín. | Educación mín. | Idioma |
 |---|---|---|---|---|---|---|
@@ -60,7 +60,7 @@ Las vacantes viven en [`backend/data/vacantes.json`](../backend/data/vacantes.js
 | Frontend React (`frontend-react`) | JavaScript, React, HTML/CSS | TypeScript, Tailwind, Accesibilidad | Comunicación, Atención al detalle | 2 años | Tecnólogo | Inglés A2 |
 | Analista de Datos (`analista-datos`) | SQL, Excel avanzado, Estadística básica | Python/pandas, Power BI | Pensamiento analítico, Comunicación | 1 año | Profesional | Inglés B1 |
 | QA Tester (`qa-tester`) | Casos de prueba, Reporte de bugs | Automatización (Playwright/Selenium), API testing | Rigurosidad, Comunicación | 1 año | Técnico | Inglés A2 |
-| Soporte / Customer Success (`soporte-cs`) | Atención al cliente, Inglés B1 | Ticketing (Jira/Zendesk), SQL básico | Empatía, Resolución de problemas | 1 año | Técnico | Inglés B1 |
+| Soporte al Viajero / Customer Success (`soporte-cs`) | Atención al cliente, Inglés B1 | Ticketing (Jira/Zendesk), SQL básico | Empatía, Resolución de problemas | 1 año | Técnico | Inglés B1 |
 
 ### 3.2 Reglas del negocio
 
@@ -393,7 +393,7 @@ Estos hallazgos salieron de las pruebas con Gemini real y de la revisión de có
 | D. Contrato de la API | [`docs/api.md`](api.md) |
 | E. Resultados de la prueba de sesgo | [`docs/sesgo/resultados.md`](sesgo/resultados.md), [`docs/sesgo/resultados_sin_anonimizar.md`](sesgo/resultados_sin_anonimizar.md) |
 | F. Resultados de la prueba de carga | [`docs/carga/resultados.md`](carga/resultados.md) |
-| G. Vacantes de Nexo Digital | [`backend/data/vacantes.json`](../backend/data/vacantes.json) |
+| G. Vacantes de Giveaway | [`backend/data/vacantes.json`](../backend/data/vacantes.json) |
 | H. Conjunto dorado y HV sintéticas | [`samples/esperado.json`](../samples/esperado.json), [`samples/`](../samples/) |
 | I. Agente, puntaje y anonimizador | [`backend/app/agent.py`](../backend/app/agent.py), [`backend/app/scoring.py`](../backend/app/scoring.py), [`backend/app/anonymizer.py`](../backend/app/anonymizer.py) |
 | J. Script de sesgo contrafactual | [`backend/scripts/bias_test.py`](../backend/scripts/bias_test.py) |

@@ -1,6 +1,6 @@
 # Agente Evaluador
 
-Grupo 3 · Agente evaluador de hojas de vida para **Nexo Digital S.A.S.**, una empresa de software ficticia de Medellín.
+Grupo 3 · Agente evaluador de hojas de vida para **Giveaway S.A.S.**, una plataforma ficticia de Medellín para reservar tours y experiencias con guías locales certificados en Colombia.
 
 Un candidato se postula subiendo su HV en PDF y autorizando el tratamiento de sus datos (Ley 1581). Un agente **LangChain + Gemini** extrae sus competencias con evidencia textual, y **reglas fijas en Python** calculan un puntaje explicado por criterio. La IA solo recomienda: un **reclutador humano decide**, y solo entonces el sistema envía el correo y agenda la entrevista en Google Calendar.
 
