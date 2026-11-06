@@ -20,6 +20,9 @@ TOPE_KNOCKOUT = 40.0
 MAX_EVIDENCIA = 200  # caracteres de cada cita que se muestran
 MAX_FRAGMENTO = 120  # caracteres del fragmento de la HV citado como evidencia
 CONTEXTO_ANTES = 40  # caracteres previos al hallazgo que se incluyen en el fragmento
+VENTANA_NEGACION = 30  # caracteres previos al hallazgo donde se busca una negación
+# ponytail: heurística léxica; "sin X pero con Y" dentro de la ventana descarta Y. Un humano decide y ve la evidencia.
+NEGACION = re.compile(r"\b(?:sin|no\s+tengo|no\s+he|no\s+cuento\s+con|desconozco)\b")
 SALTOS_A_ESPACIO = str.maketrans("\n\t\r", "   ")  # mismo largo: los índices valen sobre el original
 UMBRAL_ENTREVISTA = 75.0
 UMBRAL_REVISION = 55.0
@@ -77,7 +80,9 @@ def _evidencia_de(requisito: str, habilidades: list[Habilidad]) -> str | None:
 def _evidencia_en_texto(requisito: str, texto: str, plano: str) -> str | None:
     """Cita de la HV (original, con tildes) donde aparece el requisito; `plano` es `texto` sin tildes."""
     for a in _alternativas(requisito):
-        if m := _buscar(a, plano):
+        for m in re.finditer(rf"(?<![\w-]){re.escape(a)}(?![\w-])", plano):
+            if NEGACION.search(plano[max(0, m.start() - VENTANA_NEGACION):m.start()]):
+                continue
             inicio = max(0, m.start() - CONTEXTO_ANTES)
             fragmento = " ".join(texto[inicio:inicio + MAX_FRAGMENTO].split())
             return f"Mencionado en la hoja de vida: «{fragmento}»"
@@ -85,8 +90,6 @@ def _evidencia_en_texto(requisito: str, texto: str, plano: str) -> str | None:
 
 
 def _cubrir(requisitos: list[str], habilidades: list[Habilidad], texto: str | None = None):
-    # ponytail: coincidencia léxica, no entiende negaciones ("sin experiencia en SQL" cuenta); aceptable porque
-    # un humano decide y la evidencia citada queda a la vista.
     plano = plegar(texto).translate(SALTOS_A_ESPACIO) if texto else ""
     cumplidos, faltantes, evidencias = [], [], []
     for r in requisitos:

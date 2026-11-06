@@ -79,7 +79,7 @@ def test_una_negacion_cercana_descarta_la_coincidencia_en_el_texto(texto):
 
 @pytest.mark.parametrize("texto", [
     "Domino SQL. Sin experiencia en Docker.",
-    "Sin SQL antes; hoy uso SQL a diario.",
+    "Sin SQL antes; tras un año de práctica en la empresa uso SQL a diario.",
     "Sin experiencia previa en otros temas, pero trabajo en equipo todos los días con consultas SQL avanzadas.",
     "Es un asistente que sinceramente usa SQL",
 ])
