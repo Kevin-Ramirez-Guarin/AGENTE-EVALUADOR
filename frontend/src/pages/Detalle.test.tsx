@@ -22,7 +22,7 @@ const criterio = (c: api.NombreCriterio, puntaje: number): api.CriterioDetalle =
   nota: `nota-${c}`,
 })
 
-const base: api.EvaluacionDetalle = {
+const base: api.EvaluacionDetalle & { perfil: api.Perfil; resultado: api.Resultado } = {
   id: 12,
   vacante_id: 'backend-jr',
   candidato: 'Ana Pérez',

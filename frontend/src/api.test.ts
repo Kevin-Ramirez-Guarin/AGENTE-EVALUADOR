@@ -35,7 +35,7 @@ describe('api con mocks', () => {
 
   it('getEvaluacion trae criterios con evidencias y 404 si no existe', async () => {
     const e = await getEvaluacion(12)
-    expect(e.resultado.criterios?.[0].evidencias.length).toBeGreaterThan(0)
+    expect(e.resultado?.criterios?.[0].evidencias.length).toBeGreaterThan(0)
     await expect(getEvaluacion(999)).rejects.toMatchObject({ status: 404 })
   })
 

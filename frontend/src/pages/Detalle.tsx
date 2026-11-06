@@ -1,16 +1,19 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ApiError,
   decidir,
   getEvaluacion,
+  reintentarEvaluacion,
   type CriterioDetalle,
   type DecisionRespuesta,
   type EvaluacionDetalle,
   type Habilidad,
   type NombreCriterio,
+  type Resultado,
   type Veredicto,
 } from '../api'
+import { useRefresco } from '../estados'
 
 const VEREDICTOS: Veredicto[] = ['ENTREVISTA', 'REVISION_HUMANA', 'NO_CONTINUA']
 const ETIQUETA: Record<NombreCriterio, string> = {
@@ -72,16 +75,21 @@ function Criterio({ c }: { c: CriterioDetalle }) {
       <Lista titulo="Cumplido" items={c.cumplidos} />
       <Lista titulo="Faltante" items={c.faltantes} />
       <Lista titulo="Evidencias" items={c.evidencias} />
-      {c.nota && <p className="text-sm italic">{c.nota}</p>}
+      {c.nota && (
+        <p className="text-sm">
+          <span className="font-semibold">Nota para la persona candidata (se usa en el correo): </span>
+          <i>{c.nota}</i>
+        </p>
+      )}
     </li>
   )
 }
 
 // Si el backend no manda `criterios`, se reconstruyen solo con el puntaje.
-const criteriosDe = (ev: EvaluacionDetalle): CriterioDetalle[] =>
-  ev.resultado.criterios?.length
-    ? ev.resultado.criterios
-    : (Object.entries(ev.resultado.puntajes_por_criterio) as [NombreCriterio, number][]).map(([criterio, puntaje]) => ({
+const criteriosDe = (r: Resultado): CriterioDetalle[] =>
+  r.criterios?.length
+    ? r.criterios
+    : (Object.entries(r.puntajes_por_criterio) as [NombreCriterio, number][]).map(([criterio, puntaje]) => ({
         criterio, puntaje, peso: 0, cumplidos: [], faltantes: [], evidencias: [], nota: '',
       }))
 
@@ -106,17 +114,20 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [decision, setDecision] = useState<DecisionRespuesta | null>(null)
+  const [recarga, setRecarga] = useState(0)
+  const actualizar = useCallback(() => setRecarga((n) => n + 1), [])
+  useRefresco(ev?.estado === 'en_evaluacion', actualizar)
 
   useEffect(() => {
     let vigente = true
     getEvaluacion(evalId).then(
-      (e) => vigente && (setEv(e), setVeredicto(e.resultado.veredicto_sugerido)),
+      (e) => vigente && (setEv(e), e.resultado && setVeredicto(e.resultado.veredicto_sugerido)),
       (e) => vigente && setErrorCarga(e instanceof ApiError && e.status === 404 ? MENSAJE_ERROR[404] : 'No pudimos cargar la evaluación. Intenta de nuevo más tarde.'),
     )
     return () => {
       vigente = false
     }
-  }, [evalId])
+  }, [evalId, recarga])
 
   if (errorCarga) return <p role="alert" className="text-red-700">{errorCarga}</p>
   if (!ev) return <p role="status">Cargando evaluación…</p>
@@ -126,13 +137,19 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
   const decidida = decision !== null || ev.estado === 'decidida'
   const estado = decision?.estado ?? ev.estado
 
+  // 202 o 409: en ambos casos se recarga para mostrar el estado real.
+  async function reintentar() {
+    await reintentarEvaluacion(evalId).catch(() => undefined)
+    actualizar()
+  }
+
   async function enviar(e: FormEvent) {
     e.preventDefault()
     setError('')
     const nombre = reclutador.trim()
     const razon = motivo.trim()
     if (!nombre) return setError('Escribe tu nombre como reclutador.')
-    if (veredicto !== resultado.veredicto_sugerido && !razon) {
+    if (veredicto !== resultado?.veredicto_sugerido && !razon) {
       return setError('Escribe el motivo: es obligatorio cuando tu veredicto difiere del sugerido por la IA.')
     }
     if (!window.confirm('Se enviará un correo al candidato. ¿Confirmas la decisión?')) return
@@ -155,6 +172,19 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
         <p className="text-slate-600">Vacante: {ev.vacante_id}</p>
       </header>
 
+      {ev.estado === 'en_evaluacion' && (
+        <p role="status" className="rounded bg-blue-100 px-3 py-2 text-blue-900">La IA está analizando esta hoja de vida… Esta página se actualiza sola.</p>
+      )}
+      {ev.estado === 'error_evaluacion' && (
+        <div role="alert" className="space-y-2 rounded bg-red-100 px-3 py-2 text-red-900">
+          <p>{ev.error ?? 'La evaluación falló.'}</p>
+          <button type="button" onClick={reintentar} className="rounded bg-red-800 px-4 py-2 font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-800">
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {perfil && resultado && (<>
       <section aria-labelledby="h-perfil" className="space-y-3">
         <h2 id="h-perfil" className="text-xl font-semibold">Perfil</h2>
         <p>{perfil.resumen}</p>
@@ -170,12 +200,22 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
         <p>Cumple los obligatorios: {resultado.cumple_obligatorios ? 'Sí' : 'No'}</p>
         <p>La IA sugiere: {resultado.veredicto_sugerido}</p>
         <ul className="space-y-3">
-          {criteriosDe(ev).map((c) => <Criterio key={c.criterio} c={c} />)}
+          {criteriosDe(resultado).map((c) => <Criterio key={c.criterio} c={c} />)}
         </ul>
         <p>{resultado.explicacion}</p>
         {resultado.mejor_vacante_alternativa && <p>Vacante alternativa sugerida: {resultado.mejor_vacante_alternativa}</p>}
       </section>
 
+      </>)}
+
+      {ev.estado === 'decidida' && (
+        <div role="status" className="space-y-1">
+          <p>Estado: {estado}</p>
+          <p>Veredicto final: {final}</p>
+        </div>
+      )}
+
+      {ev.estado === 'pendiente_revision' && (
       <section aria-labelledby="h-decision" className="space-y-3 rounded border border-indigo-200 bg-indigo-50 p-4">
         <h2 id="h-decision" className="text-xl font-semibold">Tu decisión</h2>
         <p className="font-medium">La IA recomienda; la decisión es tuya.</p>
@@ -216,6 +256,7 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
           </div>
         )}
       </section>
+      )}
     </article>
   )
 }
