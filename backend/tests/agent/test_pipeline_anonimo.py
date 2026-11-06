@@ -20,7 +20,7 @@ class LlmEspia(LlmFalso):
         extraer = super().with_structured_output(schema, **kwargs)
 
         def espiar(mensajes):
-            self.recibidos.append("\n".join(m.content for m in mensajes))
+            self.recibidos.append(mensajes[-1].content)  # el HumanMessage con la HV
             return extraer.invoke(mensajes)
 
         from langchain_core.runnables import RunnableLambda
