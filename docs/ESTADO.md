@@ -6,7 +6,7 @@
 
 | Quién | Rama | Tarea | Estado |
 |---|---|---|---|
-| JVarz12 (orquestador) | `feature/setup-base` | F0: estructura, contratos, CI, prueba de conexión con Gemini | En progreso |
+| JVarz12 (orquestador) | `feature/setup-base` | F0: estructura, contratos, CI, prueba de conexión con Gemini | Código listo; falta probar Gemini con la API key |
 | Kevin | — | Revisar contratos (PLAN.md §5–6) y vacantes | Pendiente |
 | Santiago | — | Revisar contratos y rutas de la API | Pendiente |
 
@@ -16,6 +16,7 @@
 - **JVarz12:** API + BD con agente falso.
 
 ## Hecho
+- 2026-11-06 · F0 (backend): dependencias, contratos Pydantic, 5 vacantes, config/LLM, API base (`/health`, `/vacantes`), `docs/api.md`, script de humo de Gemini (sin ejecutar) y CI. 18 pruebas, 100 % de cobertura.
 - 2026-11-06 · `.gitignore` y plan del proyecto v0.2 (equipo, sprints, pruebas, convenciones).
 
 ## Decisiones
