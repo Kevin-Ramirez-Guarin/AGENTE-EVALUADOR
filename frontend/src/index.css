@@ -46,7 +46,7 @@
   --color-niebla-900: #14302b;
 
   /* Escala tipográfica (razón 1.25) con titulares fluidos. */
-  --text-hero: clamp(2.25rem, 1.4rem + 3.6vw, 4rem);
+  --text-hero: clamp(2.125rem, 1.5rem + 2.6vw, 3.5rem);
   --text-hero--line-height: 1.05;
   --text-hero--letter-spacing: -0.025em;
   --text-titulo: clamp(1.75rem, 1.35rem + 1.6vw, 2.5rem);
