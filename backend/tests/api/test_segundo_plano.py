@@ -1,11 +1,16 @@
 import json
+from datetime import datetime, timedelta, timezone
 
+import pytest
+
+from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.agent import PdfInvalidoError, PdfSinTextoError
 from app.db import Auditoria, Evaluacion, Postulacion
 from app.evaluador import get_evaluador
 from app.main import app
+from app import routes
 from tests.api.conftest import evaluador_falso_kw, postular
 
 
@@ -129,3 +134,97 @@ def test_pdf_corrupto_415_sincrono(client, monkeypatch):
 
     monkeypatch.setattr("app.routes.extraer_texto_pdf", _corrupto)
     assert postular(client).status_code == 415
+
+
+def _fijar(engine, ev_id, **campos):
+    with Session(engine) as s:
+        ev = s.get(Evaluacion, ev_id)
+        for k, v in campos.items():
+            setattr(ev, k, v)
+        s.add(ev)
+        s.commit()
+
+
+def _hace(minutos):
+    return datetime.now(timezone.utc) - timedelta(minutes=minutos)
+
+
+@pytest.fixture
+def diferida(monkeypatch):
+    """Intercepta la tarea: el POST deja la fila en_evaluacion hasta que la prueba la ejecute."""
+    pendientes = []
+    real = routes.evaluar_en_segundo_plano
+    monkeypatch.setattr(routes, "evaluar_en_segundo_plano", lambda *a: pendientes.append(a))
+    return pendientes, real
+
+
+def test_estado_en_evaluacion_hasta_que_corre_la_tarea(client, engine, uploads, diferida):
+    pendientes, tarea = diferida
+    postular(client)
+    d = client.get("/evaluaciones/1").json()
+    assert d["estado"] == "en_evaluacion" and d["resultado"] is None
+    assert len(pendientes) == 1
+    with Session(engine) as s:
+        assert s.get(Evaluacion, 1).evaluacion_iniciada_at is not None
+
+    llamadas = []
+
+    def _ev(pdf, vacante, **kwargs):
+        llamadas.append(kwargs)
+        return evaluador_falso_kw(pdf, vacante)
+
+    tarea(1, _ev, uploads)
+    assert client.get("/evaluaciones/1").json()["estado"] == "pendiente_revision"
+    assert llamadas == [{"identidad": {"nombre": "Ana Pérez", "email": "ana@example.com"}}]
+
+
+def test_doble_reintento_solo_programa_una_vez(client, engine, diferida):
+    pendientes, _ = diferida
+    postular(client)
+    _fijar(engine, 1, estado="error_evaluacion", error="x")
+    pendientes.clear()
+    assert client.post("/evaluaciones/1/reintentar").status_code == 202
+    assert client.post("/evaluaciones/1/reintentar").status_code == 409
+    assert len(pendientes) == 1
+
+
+def test_reintentar_en_evaluacion_atascada_si_pasaron_mas_de_10_min(client, engine, diferida):
+    pendientes, _ = diferida
+    postular(client)
+    pendientes.clear()
+    _fijar(engine, 1, evaluacion_iniciada_at=_hace(2))
+    assert client.post("/evaluaciones/1/reintentar").status_code == 409
+    _fijar(engine, 1, evaluacion_iniciada_at=_hace(11))
+    assert client.post("/evaluaciones/1/reintentar").status_code == 202
+    assert len(pendientes) == 1
+
+
+def test_arranque_marca_interrumpidas_las_atascadas(client, engine, diferida):
+    postular(client)
+    postular(client)
+    _fijar(engine, 1, evaluacion_iniciada_at=_hace(30))
+    with TestClient(app):  # ejecuta el lifespan
+        pass
+    d1, d2 = client.get("/evaluaciones/1").json(), client.get("/evaluaciones/2").json()
+    assert (d1["estado"], d1["error"]) == ("error_evaluacion", "interrumpida")
+    assert d2["estado"] == "en_evaluacion"
+
+
+def test_fallo_al_guardar_resultado_deja_error_evaluacion(client, engine, uploads, diferida,
+                                                          monkeypatch):
+    _, tarea = diferida
+    postular(client)
+
+    class SesionQueFalla(Session):
+        usos = 0
+
+        def commit(self):
+            SesionQueFalla.usos += 1
+            if SesionQueFalla.usos == 1:
+                raise RuntimeError("BD caída")
+            super().commit()
+
+    monkeypatch.setattr(routes, "Session", SesionQueFalla)
+    tarea(1, evaluador_falso_kw, uploads)
+    d = client.get("/evaluaciones/1").json()
+    assert d["estado"] == "error_evaluacion" and d["error"] and "Ana" not in d["error"]
