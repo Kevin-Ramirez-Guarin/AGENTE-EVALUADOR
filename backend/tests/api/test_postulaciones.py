@@ -131,6 +131,15 @@ def test_errores_de_pdf_mapean_a_4xx_sin_guardar(client, engine, uploads, exc, s
     assert list(uploads.iterdir()) == []
 
 
+def test_uploads_dir_se_lee_perezosamente_del_entorno(monkeypatch, tmp_path):
+    from app.routes import UPLOADS_DIR
+
+    monkeypatch.delenv("UPLOADS_DIR", raising=False)
+    assert get_uploads_dir() == UPLOADS_DIR
+    monkeypatch.setenv("UPLOADS_DIR", str(tmp_path))
+    assert get_uploads_dir() == tmp_path
+
+
 def test_fallo_de_bd_borra_pdf_y_hace_rollback(engine, uploads):
     class SesionRota(Session):
         def commit(self):
