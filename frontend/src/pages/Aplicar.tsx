@@ -129,7 +129,8 @@ export function Aplicar() {
           pero la decisión final la toma una persona de nuestro equipo.
         </p>
         <p className="mt-1 text-sm">
-          Lee la <Link to="/privacidad" className="text-indigo-700 underline">política de privacidad</Link>.
+          Lee la <Link to="/privacidad" className="text-indigo-800 underline">política de privacidad</Link> y conoce{' '}
+          <Link to={`/como-evaluamos?vacante=${encodeURIComponent(id)}`} className="text-indigo-800 underline">cómo evaluamos tu hoja de vida</Link>.
         </p>
         {errores.consentimiento && <p id="consentimiento-error" className="mt-1 text-sm text-red-700">{errores.consentimiento}</p>}
       </div>

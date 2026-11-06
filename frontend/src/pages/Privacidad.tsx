@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 export function Privacidad() {
   return (
     <article className="space-y-3">
@@ -9,6 +11,9 @@ export function Privacidad() {
       <p>
         Una herramienta de inteligencia artificial analiza tu hoja de vida y sugiere un resultado, pero la decisión final
         siempre la toma una persona del equipo de selección.
+      </p>
+      <p>
+        Mira con detalle <Link to="/como-evaluamos" className="text-indigo-800 underline">cómo evaluamos tu hoja de vida</Link>.
       </p>
       <p>
         No compartimos tus datos con terceros ni los usamos para otros fines. Puedes pedir en cualquier momento conocer,
