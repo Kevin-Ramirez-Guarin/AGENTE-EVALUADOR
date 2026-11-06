@@ -38,6 +38,19 @@ export function Campo({ id, label, error, ayuda, children }: { id: string; label
   )
 }
 
+// Banda oscura con el h1 de las páginas internas del sitio de empleo; continúa el encabezado.
+export function BandaTitulo({ titulo, antes, children, className = 'pb-12' }: { titulo: string; antes?: ReactNode; children?: ReactNode; className?: string }) {
+  return (
+    <div data-tono="oscuro" className="bg-selva-900 text-white">
+      <div className={`mx-auto max-w-6xl space-y-4 px-4 pt-6 sm:px-6 ${className}`}>
+        {antes}
+        <h1 className="max-w-3xl text-titulo font-semibold">{titulo}</h1>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // Iconos de trazo (24×24), decorativos: el texto vecino da el significado.
 function Icono({ children, ...props }: SVGProps<SVGSVGElement>) {
   return (
