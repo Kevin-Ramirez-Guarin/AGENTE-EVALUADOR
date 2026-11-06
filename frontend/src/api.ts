@@ -15,6 +15,11 @@ export interface Vacante {
   nivel_educativo_min: string
   idiomas: Idioma[]
   pesos: { tecnico: number; experiencia: number; blandas: number; educacion: number; idiomas: number }
+  // Opcionales: un backend anterior puede no enviarlos o enviarlos vacíos.
+  descripcion?: string
+  equipo?: string
+  ubicacion?: string
+  modalidad?: string
 }
 
 export interface PostulacionInput {
@@ -131,6 +136,10 @@ const MOCK_VACANTES: Vacante[] = [
     nivel_educativo_min: 'tecnologo',
     idiomas: [{ idioma: 'inglés', nivel: 'A2' }],
     pesos: { tecnico: 0.45, experiencia: 0.25, blandas: 0.15, educacion: 0.1, idiomas: 0.05 },
+    equipo: 'Producto y Tecnología',
+    ubicacion: 'Medellín, Colombia',
+    modalidad: 'Híbrido · Medellín',
+    descripcion: 'Construyes y mantienes el motor de reservas y disponibilidad de tours: las APIs que conectan los cupos de los guías locales con la web y la nueva app.',
   },
 ]
 const MOCK_POSTULACION: PostulacionCreada = { evaluacion_id: 12, estado: 'en_evaluacion' }
@@ -157,7 +166,7 @@ const MOCK_DETALLE_12: EvaluacionDetalle = {
     puntajes_por_criterio: { tecnico: 88, experiencia: 80, blandas: 70, educacion: 100, idiomas: 100 },
     criterios: [
       { criterio: 'tecnico', puntaje: 88, peso: 0.45, cumplidos: ['Python', 'SQL', 'Git'], faltantes: ['Docker'], evidencias: ['2 años desarrollando APIs en Python'], nota: 'Cumple los obligatorios; falta Docker (deseable).' },
-      { criterio: 'experiencia', puntaje: 80, peso: 0.25, cumplidos: ['2 años (mínimo 1)'], faltantes: [], evidencias: ['Backend en Nexo Labs, 2022-2024'], nota: 'Supera el mínimo.' },
+      { criterio: 'experiencia', puntaje: 80, peso: 0.25, cumplidos: ['2 años (mínimo 1)'], faltantes: [], evidencias: ['Backend en Ruta Norte Software, 2022-2024'], nota: 'Supera el mínimo.' },
       { criterio: 'blandas', puntaje: 70, peso: 0.15, cumplidos: ['Trabajo en equipo'], faltantes: ['Aprendizaje'], evidencias: ['Lideró dailies en un equipo de 5 personas'], nota: 'Evidencia parcial.' },
       { criterio: 'educacion', puntaje: 100, peso: 0.1, cumplidos: ['Tecnólogo'], faltantes: [], evidencias: ['Tecnólogo en Desarrollo de Software'], nota: 'Cumple el nivel mínimo.' },
       { criterio: 'idiomas', puntaje: 100, peso: 0.05, cumplidos: ['Inglés B1 (mínimo A2)'], faltantes: [], evidencias: ['Certificado B1'], nota: 'Supera el nivel pedido.' },
