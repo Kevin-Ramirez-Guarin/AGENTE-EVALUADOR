@@ -64,7 +64,7 @@ Nuestro diseño parte de una regla: **la IA extrae y recomienda, las reglas punt
 
 **Diseño:**
 - Se tomó una misma HV de rango medio para Backend Jr y se crearon 8 variantes. Cada variante cambia **un solo factor** (nombre ×2, género, origen ×2 y edad), y hay una combinada.
-- Cada variante pasó 3 veces por Gemini (`gemini-3.1-flash-lite`), en dos modos:
+- Cada variante pasó 3 veces por Gemini (`gemini-3.1-flash-lite`, con `MODO_EVALUACION=pipeline` para abaratar las corridas; usa la misma extracción y el mismo puntaje que el modo agente), en dos modos:
   - **con** el anonimizador (el sistema real);
   - **sin** él (contraste: el LLM ve la identidad).
 
