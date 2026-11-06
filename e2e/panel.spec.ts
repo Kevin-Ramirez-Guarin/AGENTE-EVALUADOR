@@ -19,7 +19,7 @@ test('el candidato aplica y el reclutador ve el ranking, el detalle y decide ENT
   await page.getByLabel(/motivo/i).fill('Decisión de la prueba e2e') // necesario si el falso no sugiere ENTREVISTA
   await page.getByRole('button', { name: /registrar decisión/i }).click()
 
-  await expect(page.getByRole('status')).toContainText('decidida')
+  await expect(page.getByRole('status')).toContainText(/decidida/i)
   await expect(page.getByLabel('Veredicto')).toBeDisabled()
   expect(mensajes).toHaveLength(1)
   expect(mensajes[0]).toContain('Se enviará un correo al candidato')
@@ -36,7 +36,7 @@ test('con un veredicto distinto del sugerido y sin motivo no se envía y se mues
   })
   const sugerido = (await page.getByText(/la ia sugiere:/i).textContent()) ?? ''
   await page.getByLabel('Nombre del reclutador').fill('Reclutadora E2E')
-  await page.getByLabel('Veredicto').selectOption(sugerido.includes('NO_CONTINUA') ? 'ENTREVISTA' : 'NO_CONTINUA')
+  await page.getByLabel('Veredicto').selectOption(/no continúa/i.test(sugerido) ? 'ENTREVISTA' : 'NO_CONTINUA')
   await page.getByRole('button', { name: /registrar decisión/i }).click()
 
   await expect(page.getByRole('alert')).toContainText(/motivo/i)
