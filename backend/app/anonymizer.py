@@ -104,7 +104,8 @@ GENERO = [(_c(p), r) for p, r in [
     (rf"{_ART}licenciad[oa](?:/a)?\b", "título de licenciatura"),
     (rf"{_ART}doctor(?:a)?(?:/a)?\s+en\b", "título de doctorado en"),
     (rf"{_ART}(?:egresad|graduad|titulad)[oa](?:/a)?\b", "con título"),
-    (rf"{_ART}candidat[oa](?:/a)?\b", "persona candidata"),
+    (r"(?:\b(?:un|una|el|la|esta|este|esa|ese|dicha|dicho)\s+)?(?<!persona )(?:candidat[oa]|postulante|aspirante)(?:/a)?\b",
+     "la persona candidata"),
     (r"\bapasionad[oa](?:/a)?\b", "con pasión"),
     (r"\bmotivad[oa](?:/a)?\b", "con motivación"),
     (r"\bcomprometid[oa](?:/a)?\b", "con compromiso"),
@@ -167,6 +168,13 @@ def _limpiar(texto: str) -> str:
     return "\n".join(lineas)
 
 
+def neutralizar_genero(texto: str) -> str:
+    """Solo la neutralización de género (sin tocar contacto ni datos personales); sirve también para la salida del LLM."""
+    for patron, repl in GENERO:
+        texto = _reemplazar(patron, repl, texto, capitalizar=True)
+    return re.sub(r"[ \t]+", " ", PRONOMBRE.sub("", texto)).strip()
+
+
 def anonimizar(texto: str, identidad: dict | None = None) -> str:
     for patron, repl in DATOS:
         texto = _reemplazar(patron, repl, texto)
@@ -174,6 +182,4 @@ def anonimizar(texto: str, identidad: dict | None = None) -> str:
     if palabras:
         texto = _reemplazar(_c(rf"(?<!\w)(?:{'|'.join(map(re.escape, palabras))})(?!\w)"), PERSONA, texto)
         texto = _COLAPSO_PERSONA.sub(PERSONA, texto)
-    for patron, repl in GENERO:
-        texto = _reemplazar(patron, repl, texto, capitalizar=True)
-    return _limpiar(PRONOMBRE.sub("", texto))
+    return _limpiar(neutralizar_genero(texto))
