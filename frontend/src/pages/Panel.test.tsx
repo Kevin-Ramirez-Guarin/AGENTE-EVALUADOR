@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../api'
 import { Panel } from './Panel'
 
@@ -52,7 +52,7 @@ describe('Panel', () => {
     expect(filas[0]).toHaveTextContent('Backend Jr')
     expect(filas[0]).toHaveTextContent('ENTREVISTA')
     expect(filas[1]).toHaveTextContent('REVISION_HUMANA')
-    expect(filas[1]).toHaveTextContent('decidida')
+    expect(filas[1]).toHaveTextContent(/decidida/i)
   })
 
   it('filtra por vacante y vuelve al inicio de la paginación', async () => {
@@ -105,5 +105,109 @@ describe('Panel', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/cargando/i)
     expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('button', { name: /siguiente/i })).toBeDisabled()
+  })
+
+  it('muestra un badge legible por estado y "—" cuando el puntaje es null', async () => {
+    vi.mocked(api.getEvaluaciones).mockResolvedValue([
+      fila({ id: 1, candidato: 'A', estado: 'en_evaluacion', puntaje_total: null, veredicto_sugerido: null }),
+      fila({ id: 2, candidato: 'B', estado: 'error_evaluacion', puntaje_total: null, veredicto_sugerido: null }),
+      fila({ id: 3, candidato: 'C', estado: 'pendiente_revision' }),
+      fila({ id: 4, candidato: 'D', estado: 'decidida', veredicto_final: 'ENTREVISTA' }),
+    ])
+    setup()
+    const filas = (await screen.findAllByRole('row')).slice(1)
+    expect(filas[0]).toHaveTextContent('En evaluación')
+    expect(within(filas[0]).getAllByRole('cell')[2]).toHaveTextContent('—')
+    expect(within(filas[0]).getAllByRole('cell')[3]).toHaveTextContent('—')
+    expect(filas[1]).toHaveTextContent('Error en la evaluación')
+    expect(filas[2]).toHaveTextContent('Pendiente de revisión')
+    expect(filas[3]).toHaveTextContent('Decidida')
+  })
+
+  it('un estado desconocido no rompe el panel y se muestra tal cual', async () => {
+    vi.mocked(api.getEvaluaciones).mockResolvedValue([fila({ id: 1, estado: 'archivada' as api.EstadoEvaluacion })])
+    setup()
+    expect(await screen.findByRole('table')).toHaveTextContent('archivada')
+  })
+
+  it('el botón Actualizar vuelve a pedir la página actual', async () => {
+    const user = setup()
+    await screen.findByRole('table')
+    vi.mocked(api.getEvaluaciones).mockClear()
+    await user.click(screen.getByRole('button', { name: /actualizar/i }))
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(1)
+    expect(api.getEvaluaciones).toHaveBeenLastCalledWith({ vacante_id: undefined, limit: 11, offset: 0 })
+  })
+})
+
+describe('Panel: refresco automático', () => {
+  const enCurso = fila({ id: 1, estado: 'en_evaluacion', puntaje_total: null, veredicto_sugerido: null })
+  const flush = () => act(() => vi.advanceTimersByTimeAsync(0))
+  const avanzar = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms))
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.useFakeTimers()
+    vi.mocked(api.getVacantes).mockResolvedValue(vacantes)
+    vi.mocked(api.getEvaluaciones).mockResolvedValue([enCurso])
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('refresca cada 5 s mientras haya filas en_evaluacion y se detiene al terminar', async () => {
+    render(<MemoryRouter><Panel /></MemoryRouter>)
+    await flush()
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(1)
+    await avanzar(4900)
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(1)
+    await avanzar(200)
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(2)
+
+    vi.mocked(api.getEvaluaciones).mockResolvedValue([fila({ id: 1 })])
+    await avanzar(5000)
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(3)
+    expect(screen.getByRole('table')).toHaveTextContent('82.5')
+    await avanzar(20000)
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(3)
+  })
+
+  it('no refresca si ninguna fila está en_evaluacion', async () => {
+    vi.mocked(api.getEvaluaciones).mockResolvedValue([fila({ id: 1 })])
+    render(<MemoryRouter><Panel /></MemoryRouter>)
+    await flush()
+    await avanzar(20000)
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(1)
+  })
+
+  it('al refrescar mantiene los filtros y la página, y no vacía la tabla', async () => {
+    vi.mocked(api.getEvaluaciones).mockResolvedValue(Array.from({ length: 11 }, (_, i) => fila({ id: i + 1, estado: i === 0 ? 'en_evaluacion' : 'decidida' })))
+    render(<MemoryRouter><Panel /></MemoryRouter>)
+    await flush()
+    fireEvent.change(screen.getByLabelText('Vacante'), { target: { value: 'frontend-jr' } })
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: /siguiente/i }))
+    await flush()
+    await avanzar(5000)
+    expect(api.getEvaluaciones).toHaveBeenLastCalledWith({ vacante_id: 'frontend-jr', limit: 11, offset: 10 })
+    expect(screen.getByRole('table')).toBeInTheDocument()
+  })
+
+  it('un error transitorio del refresco no reemplaza las filas ya cargadas', async () => {
+    render(<MemoryRouter><Panel /></MemoryRouter>)
+    await flush()
+    vi.mocked(api.getEvaluaciones).mockRejectedValue(new Error('boom'))
+    await avanzar(5000)
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    vi.mocked(api.getEvaluaciones).mockResolvedValue([enCurso])
+    await avanzar(5000)
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(3)
+  })
+
+  it('limpia el intervalo al desmontar', async () => {
+    const { unmount } = render(<MemoryRouter><Panel /></MemoryRouter>)
+    await flush()
+    unmount()
+    await avanzar(20000)
+    expect(api.getEvaluaciones).toHaveBeenCalledTimes(1)
   })
 })

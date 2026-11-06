@@ -1,23 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
-
-const PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF')
-
-async function postularYAbrirDetalle(page: Page, nombre: string) {
-  await page.goto('/aplicar/backend-jr')
-  await page.getByLabel('Nombre completo').fill(nombre)
-  await page.getByLabel('Correo electrónico').fill('e2e@example.com')
-  await page.getByLabel(/hoja de vida/i).setInputFiles({ name: 'hv.pdf', mimeType: 'application/pdf', buffer: PDF })
-  await page.getByRole('checkbox', { name: /autorizo/i }).check()
-  await page.getByRole('button', { name: /enviar/i }).click()
-  await expect(page.getByRole('status')).toContainText('Recibimos tu postulación')
-
-  await page.getByRole('link', { name: 'Panel' }).click()
-  await expect(page.getByText('Demo sin autenticación')).toBeVisible()
-  const fila = page.getByRole('row', { name: new RegExp(nombre) })
-  await expect(fila).toContainText('pendiente_revision')
-  await fila.getByRole('link', { name: nombre }).click()
-  await expect(page.getByRole('heading', { name: nombre })).toBeVisible()
-}
+import { expect, test } from '@playwright/test'
+import { postularYAbrirDetalle } from './helpers'
 
 test('el candidato aplica y el reclutador ve el ranking, el detalle y decide ENTREVISTA', async ({ page }) => {
   const nombre = `Candidata E2E ${Date.now()}`

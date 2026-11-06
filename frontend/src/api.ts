@@ -25,9 +25,11 @@ export interface PostulacionInput {
   consentimiento: boolean
 }
 
+export type EstadoEvaluacion = 'en_evaluacion' | 'pendiente_revision' | 'decidida' | 'error_evaluacion'
+
 export interface PostulacionCreada {
   evaluacion_id: number
-  estado: string
+  estado: EstadoEvaluacion
 }
 
 export type Veredicto = 'ENTREVISTA' | 'REVISION_HUMANA' | 'NO_CONTINUA'
@@ -74,20 +76,21 @@ export interface EvaluacionResumen {
   id: number
   vacante_id: string
   candidato: string
-  puntaje_total: number
-  veredicto_sugerido: Veredicto
+  puntaje_total: number | null
+  veredicto_sugerido: Veredicto | null
   veredicto_final: Veredicto | null
-  estado: string
+  estado: EstadoEvaluacion
 }
 
 export interface EvaluacionDetalle {
   id: number
   vacante_id: string
   candidato: string
-  perfil: Perfil
-  resultado: Resultado
+  perfil: Perfil | null
+  resultado: Resultado | null
   veredicto_final: Veredicto | null
-  estado: string
+  estado: EstadoEvaluacion
+  error: string | null
 }
 
 export interface DecisionInput {
@@ -130,7 +133,7 @@ const MOCK_VACANTES: Vacante[] = [
     pesos: { tecnico: 0.45, experiencia: 0.25, blandas: 0.15, educacion: 0.1, idiomas: 0.05 },
   },
 ]
-const MOCK_POSTULACION: PostulacionCreada = { evaluacion_id: 12, estado: 'pendiente_revision' }
+const MOCK_POSTULACION: PostulacionCreada = { evaluacion_id: 12, estado: 'en_evaluacion' }
 
 const MOCK_DETALLE_12: EvaluacionDetalle = {
   id: 12,
@@ -166,6 +169,7 @@ const MOCK_DETALLE_12: EvaluacionDetalle = {
   },
   veredicto_final: null,
   estado: 'pendiente_revision',
+  error: null,
 }
 // Sin `criterios`: ejercita el respaldo a puntajes_por_criterio.
 const MOCK_DETALLE_13: EvaluacionDetalle = {
@@ -183,7 +187,16 @@ const MOCK_DETALLE_13: EvaluacionDetalle = {
     mejor_vacante_alternativa: 'frontend-jr',
   },
 }
-const MOCK_DETALLES = [MOCK_DETALLE_12, MOCK_DETALLE_13]
+const MOCK_DETALLE_14: EvaluacionDetalle = { ...MOCK_DETALLE_12, id: 14, candidato: 'Sara Díaz', perfil: null, resultado: null, estado: 'en_evaluacion' }
+const MOCK_DETALLE_15: EvaluacionDetalle = {
+  ...MOCK_DETALLE_14,
+  id: 15,
+  candidato: 'Pedro Ríos',
+  estado: 'error_evaluacion',
+  error: 'El servicio de IA no respondió a tiempo.',
+}
+const MOCK_DETALLE_16: EvaluacionDetalle = { ...MOCK_DETALLE_12, id: 16, candidato: 'Marta Ruiz', veredicto_final: 'ENTREVISTA', estado: 'decidida' }
+const MOCK_DETALLES = [MOCK_DETALLE_12, MOCK_DETALLE_13, MOCK_DETALLE_16, MOCK_DETALLE_14, MOCK_DETALLE_15]
 const MOCK_ENTREVISTA = { inicio: '2026-11-09T10:00:00-05:00', meet_link: 'https://meet.google.com/xxx-xxxx-xxx' }
 
 const mocksActivos = () => import.meta.env.VITE_USE_MOCKS === 'true'
@@ -195,7 +208,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}))
     throw new ApiError(res.status, body.detail ?? res.statusText)
   }
-  return res.json() as Promise<T>
+  return (res.status === 202 ? undefined : res.json()) as Promise<T>
 }
 
 export async function getVacantes(): Promise<Vacante[]> {
@@ -229,8 +242,8 @@ export async function getEvaluaciones(f: FiltroEvaluaciones = {}): Promise<Evalu
       id: d.id,
       vacante_id: d.vacante_id,
       candidato: d.candidato,
-      puntaje_total: d.resultado.puntaje_total,
-      veredicto_sugerido: d.resultado.veredicto_sugerido,
+      puntaje_total: d.resultado?.puntaje_total ?? null,
+      veredicto_sugerido: d.resultado?.veredicto_sugerido ?? null,
       veredicto_final: d.veredicto_final,
       estado: d.estado,
     }))
@@ -267,4 +280,13 @@ export async function decidir(id: number, input: DecisionInput): Promise<Decisio
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
+}
+
+// 202 si la evaluación está en error_evaluacion; 409 si no.
+export async function reintentarEvaluacion(id: number): Promise<void> {
+  if (mocksActivos()) {
+    if (MOCK_DETALLES.find((m) => m.id === id)?.estado !== 'error_evaluacion') throw new ApiError(409, 'La evaluación no está en error')
+    return
+  }
+  await request(`/evaluaciones/${id}/reintentar`, { method: 'POST' })
 }
