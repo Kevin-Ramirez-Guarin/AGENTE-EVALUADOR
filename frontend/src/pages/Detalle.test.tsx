@@ -10,6 +10,7 @@ vi.mock('../api', async (importOriginal) => ({
   getEvaluacion: vi.fn(),
   decidir: vi.fn(),
   reintentarEvaluacion: vi.fn(),
+  getVacante: vi.fn(),
 }))
 
 const criterio = (c: api.NombreCriterio, puntaje: number): api.CriterioDetalle => ({
@@ -75,6 +76,8 @@ describe('Detalle', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     localStorage.clear()
+    // Por defecto la búsqueda del título falla y se muestra el id.
+    vi.mocked(api.getVacante).mockRejectedValue(new api.ApiError(404, 'x'))
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -241,6 +244,20 @@ describe('Detalle', () => {
       await user.click(screen.getByRole('button', { name: /reintentar/i }))
       expect(await screen.findByText(/puntaje total/i)).toBeInTheDocument()
     })
+  })
+
+  it('muestra el título de la vacante en lugar de su id', async () => {
+    vi.mocked(api.getVacante).mockResolvedValue({ id: 'backend-jr', titulo: 'Desarrollador/a Backend Jr (Python)' } as api.Vacante)
+    await setup()
+    expect(await screen.findByText('Vacante: Desarrollador/a Backend Jr (Python)')).toBeInTheDocument()
+    expect(api.getVacante).toHaveBeenCalledWith('backend-jr')
+    expect(screen.queryByText('Vacante: backend-jr')).not.toBeInTheDocument()
+  })
+
+  it('si no encuentra la vacante muestra su id', async () => {
+    await setup()
+    await waitFor(() => expect(api.getVacante).toHaveBeenCalledWith('backend-jr'))
+    expect(screen.getByText('Vacante: backend-jr')).toBeInTheDocument()
   })
 
   it('avisa si la evaluación no existe', async () => {

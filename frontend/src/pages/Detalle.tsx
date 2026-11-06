@@ -4,6 +4,7 @@ import {
   ApiError,
   decidir,
   getEvaluacion,
+  getVacante,
   reintentarEvaluacion,
   type CriterioDetalle,
   type EstadoEvaluacion,
@@ -197,6 +198,7 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
   const [enviando, setEnviando] = useState(false)
   const [decision, setDecision] = useState<DecisionRespuesta | null>(null)
   const [recarga, setRecarga] = useState(0)
+  const [tituloVacante, setTituloVacante] = useState<string | null>(null)
   const actualizar = useCallback(() => setRecarga((n) => n + 1), [])
   useRefresco(ev?.estado === 'en_evaluacion', actualizar)
 
@@ -210,6 +212,17 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
       vigente = false
     }
   }, [evalId, recarga])
+
+  // Título legible de la vacante; si la búsqueda falla se queda el id.
+  const vacanteId = ev?.vacante_id
+  useEffect(() => {
+    if (!vacanteId) return
+    let vigente = true
+    getVacante(vacanteId).then((v) => vigente && setTituloVacante(v.titulo), () => undefined)
+    return () => {
+      vigente = false
+    }
+  }, [vacanteId])
 
   const volver = (
     <Link to="/panel" className="-ml-1 inline-flex items-center gap-1 rounded-md py-1 pr-2 text-sm font-medium text-caribe-800 hover:text-selva-900">
@@ -277,7 +290,7 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold tracking-[-0.02em] text-selva-900">{ev.candidato}</h1>
-          <p className="mt-1 text-niebla-600">Vacante: {ev.vacante_id}</p>
+          <p className="mt-1 text-niebla-600">Vacante: {tituloVacante ?? ev.vacante_id}</p>
         </div>
         <EstadoInsignia estado={estado as EstadoEvaluacion} />
       </header>
