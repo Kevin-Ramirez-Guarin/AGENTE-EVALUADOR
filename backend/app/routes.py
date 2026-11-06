@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlmodel import Session, select
 
+from app.agent import PdfInvalidoError, PdfSinTextoError
 from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_session
 from app.evaluador import Evaluador, get_evaluador
 from app.models import Veredicto
@@ -18,7 +19,12 @@ router = APIRouter()
 
 MAX_PDF_BYTES = 5 * 1024 * 1024
 EMAIL_RE = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"  # patrón simple; evita sumar email-validator
-UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+ERRORES_PDF = {
+    PdfInvalidoError: (415, "El archivo no es un PDF válido"),
+    PdfSinTextoError: (422, "No pudimos leer texto en tu PDF; ¿es un escaneo? "
+                            "Súbelo con texto seleccionable"),
+}
+UPLOADS_DIR =Path(__file__).resolve().parent.parent / "uploads"
 
 
 def get_uploads_dir() -> Path:
@@ -102,10 +108,12 @@ def crear_postulacion(
     try:
         perfil, resultado = evaluador(contenido, vacante)
     except Exception as exc:
+        status, detail = ERRORES_PDF.get(
+            type(exc), (502, "No se pudo evaluar la hoja de vida"))
         _auditar(session, "evaluacion_fallida", None,
-                 {"vacante_id": vacante_id, "error": type(exc).__name__})
+                 {"vacante_id": vacante_id, "error": type(exc).__name__, "status": status})
         session.commit()
-        raise HTTPException(502, "No se pudo evaluar la hoja de vida") from exc
+        raise HTTPException(status, detail) from exc
 
     ev = _persistir(session, uploads, contenido, vacante_id, nombre, email, perfil, resultado)
     return {"evaluacion_id": ev.id, "estado": ev.estado}

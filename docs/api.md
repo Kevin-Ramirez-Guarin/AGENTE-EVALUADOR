@@ -40,7 +40,7 @@ Base: `http://localhost:8000`. Todo es JSON salvo la carga del PDF. Todas las ru
 ```json
 { "evaluacion_id": 12, "estado": "pendiente_revision" }
 ```
-Errores: 404 vacante inexistente; 415 no es PDF; 413 PDF > 5 MB (o cuerpo mayor a ~5,1 MB); 422 sin consentimiento o campos inválidos (`nombre` 1-200 caracteres, `email` con formato válido y máx. 254); 502 el evaluador falló (no se guarda nada).
+Errores: 404 vacante inexistente; 415 no es PDF; 413 PDF > 5 MB (o cuerpo mayor a ~5,1 MB); 422 sin consentimiento, campos inválidos (`nombre` 1-200 caracteres, `email` con formato válido y máx. 254) o PDF sin capa de texto (escaneo; `detail`: "No pudimos leer texto en tu PDF; ¿es un escaneo? Súbelo con texto seleccionable"); 415 también si el evaluador detecta un PDF corrupto; 502 el evaluador falló por otra causa. En todos los errores del evaluador se audita y no se guarda nada.
 
 ## GET /evaluaciones  (implementada)
 Panel del reclutador, ordenado por puntaje descendente. Query opcional: `vacante_id`, `estado`, `limit` (1-200, por defecto 50) y `offset` (>= 0, por defecto 0).
