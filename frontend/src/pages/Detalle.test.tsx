@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../api'
 import { Detalle } from './Detalle'
@@ -172,5 +172,55 @@ describe('Detalle', () => {
     vi.mocked(api.getEvaluacion).mockRejectedValue(new api.ApiError(404, 'x'))
     renderAt(99)
     expect(await screen.findByRole('alert')).toHaveTextContent(/no existe/i)
+  })
+
+  it('el respaldo sin criterios no muestra un peso falso', async () => {
+    await setup({ ...base, resultado: { ...base.resultado, criterios: [] } })
+    expect(screen.queryByText(/peso/i)).not.toBeInTheDocument()
+  })
+
+  it('el texto del puntaje de la barra está oculto a lectores de pantalla', async () => {
+    await setup()
+    expect(screen.getByText('88 / 100')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('el enlace de Meet https abre en pestaña nueva con rel seguro', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(api.decidir).mockResolvedValue({ id: 12, veredicto_final: 'ENTREVISTA', estado: 'decidida', entrevista: { inicio: '2026-11-09T10:00:00-05:00', meet_link: 'https://meet.google.com/a' } })
+    const user = await setup()
+    await registrar(user)
+    const enlace = await screen.findByRole('link', { name: /meet/i })
+    expect(enlace).toHaveAttribute('target', '_blank')
+    expect(enlace).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('un meet_link que no es https no se muestra como enlace', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(api.decidir).mockResolvedValue({ id: 12, veredicto_final: 'ENTREVISTA', estado: 'decidida', entrevista: { inicio: '2026-11-09T10:00:00-05:00', meet_link: 'javascript:alert(1)' } })
+    const user = await setup()
+    await registrar(user)
+    await screen.findByText(/estado: decidida/i)
+    expect(screen.queryByRole('link', { name: /meet/i })).not.toBeInTheDocument()
+  })
+
+  it('al navegar a otra evaluación ignora la respuesta tardía de la anterior', async () => {
+    let resolver12: (e: api.EvaluacionDetalle) => void = () => {}
+    vi.mocked(api.getEvaluacion).mockImplementation((id) =>
+      id === 12 ? new Promise((r) => (resolver12 = r)) : Promise.resolve({ ...base, id: 13, candidato: 'Luis Gómez' }),
+    )
+    render(
+      <MemoryRouter initialEntries={['/panel/12']}>
+        <Link to="/panel/13">ir</Link>
+        <Routes>
+          <Route path="/panel/:id" element={<Detalle />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await userEvent.setup().click(screen.getByRole('link', { name: 'ir' }))
+    await screen.findByRole('heading', { name: /luis gómez/i })
+    resolver12(base)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(screen.getByRole('heading', { name: /luis gómez/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /ana pérez/i })).not.toBeInTheDocument()
   })
 })
