@@ -156,3 +156,25 @@ def test_fallo_de_google_no_revierte_la_decision(client, engine, veredicto):
         ultima = s.exec(select(Auditoria).order_by(Auditoria.id.desc())).first()
     assert ultima.evento == "notificacion_fallida"
     assert json.loads(ultima.detalle)["error"] == "RuntimeError"
+
+
+def test_entrevista_queda_guardada_y_se_ve_en_el_detalle(client, engine, falso):
+    _preparar(client, engine, "ENTREVISTA")
+    assert client.get("/evaluaciones/1").json()["entrevista"] is None
+    ent = _decidir(client, "ENTREVISTA").json()["entrevista"]
+    detalle = client.get("/evaluaciones/1").json()
+    assert detalle["entrevista"] == ent
+    assert detalle["entrevista"]["meet_link"] == "https://meet.google.com/fake-test"
+
+
+def test_entrevista_se_guarda_aunque_falle_el_correo(client, engine):
+    app.dependency_overrides[get_notificador] = lambda: _RotoSoloCorreo()
+    _preparar(client, engine, "ENTREVISTA")
+    _decidir(client, "ENTREVISTA")
+    assert client.get("/evaluaciones/1").json()["entrevista"]["meet_link"] == "https://meet.google.com/fake-test"
+
+
+def test_no_continua_no_guarda_entrevista(client, engine, falso):
+    _preparar(client, engine, "NO_CONTINUA")
+    _decidir(client, "NO_CONTINUA")
+    assert client.get("/evaluaciones/1").json()["entrevista"] is None

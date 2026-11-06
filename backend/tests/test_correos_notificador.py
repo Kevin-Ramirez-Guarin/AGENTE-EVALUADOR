@@ -56,3 +56,18 @@ def test_google_delega_en_google_apis():
         assert n.crear_entrevista("a@b.co", "T", "D", INICIO) == {"x": 1}
     env.assert_called_once_with("a@b.co", "As", "Cu")
     cre.assert_called_once()
+
+
+def test_variable_notificador_manda_sobre_el_token(monkeypatch, tmp_path):
+    from app import google_apis
+    from app.notificador import NotificadorDeshabilitado, NotificadorFalso, NotificadorGoogle, get_notificador
+
+    token = tmp_path / "token.json"
+    token.write_text("{}")
+    monkeypatch.setattr(google_apis, "TOKEN_PATH", token)
+    monkeypatch.delenv("NOTIFICADOR", raising=False)
+    assert isinstance(get_notificador(), NotificadorGoogle)
+    monkeypatch.setenv("NOTIFICADOR", "deshabilitado")
+    assert isinstance(get_notificador(), NotificadorDeshabilitado)
+    monkeypatch.setenv("NOTIFICADOR", "falso")
+    assert isinstance(get_notificador(), NotificadorFalso)
