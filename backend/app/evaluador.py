@@ -1,6 +1,8 @@
 """Costura con el agente. El track IA conecta aquí el evaluador real sin tocar las rutas."""
+import os
 from collections.abc import Callable
 
+from app.agent import evaluar_hv
 from app.models import PerfilCandidato, ResultadoEvaluacion, Vacante, Veredicto
 
 Evaluador = Callable[[bytes, Vacante], tuple[PerfilCandidato, ResultadoEvaluacion]]
@@ -32,5 +34,12 @@ def evaluador_falso(pdf_bytes: bytes, vacante: Vacante) -> tuple[PerfilCandidato
     return perfil, resultado
 
 
+def evaluador_real(pdf_bytes: bytes, vacante: Vacante) -> tuple[PerfilCandidato, ResultadoEvaluacion]:
+    from app.main import _cargar_vacantes  # import tardío: main importa las rutas que importan este módulo
+
+    return evaluar_hv(pdf_bytes, vacante, _cargar_vacantes())
+
+
 def get_evaluador() -> Evaluador:
-    return evaluador_falso
+    """Real por defecto; EVALUADOR=falso fuerza el simulado (demos y pruebas sin Gemini)."""
+    return evaluador_falso if os.getenv("EVALUADOR", "").strip().lower() == "falso" else evaluador_real

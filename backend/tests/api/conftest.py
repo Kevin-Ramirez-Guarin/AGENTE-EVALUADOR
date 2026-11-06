@@ -10,6 +10,12 @@ from app.routes import get_uploads_dir
 PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\n%%EOF"
 
 
+@pytest.fixture(autouse=True)
+def _evaluador_falso_por_defecto(monkeypatch):
+    """get_evaluador es el real por defecto; la API se prueba sin Gemini salvo que el test lo sobrescriba."""
+    monkeypatch.setenv("EVALUADOR", "falso")
+
+
 @pytest.fixture
 def engine(tmp_path):
     eng = create_engine(
