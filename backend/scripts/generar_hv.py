@@ -1,7 +1,8 @@
-"""Genera las 7 HV sintéticas (todas ficticias) y el golden set en samples/.
+"""Genera las 8 HV sintéticas (todas ficticias) y el golden set en samples/.
 
-Uso (desde backend/): python -m scripts.generar_hv
+Uso (desde backend/): python -m scripts.generar_hv [--solo hv_qa_limite.pdf]
 """
+import argparse
 import json
 import re
 from pathlib import Path
@@ -64,7 +65,21 @@ HVS = [
             "Idiomas": "Inglés A2.",
             "Habilidades blandas": "Pensamiento analítico, puntualidad.",
         },
-        "esperado": {"anios": [0.5, 1.5], "nivel_educativo": "profesional", "vacante": "analista-datos", "veredicto": "REVISION_HUMANA"},
+        "esperado": {"anios": [0.5, 1.5], "nivel_educativo": "profesional", "vacante": "analista-datos", "veredicto": "ENTREVISTA"},
+    },
+    {
+        # Cumple los obligatorios de qa-tester pero es débil en el resto (6 meses, inglés A1, sin deseables): ~64.
+        "archivo": "hv_qa_limite.pdf",
+        "nombre": "Natalia Andrea Cardona Ríos",
+        "contacto": "natalia.cardona.demo@example.com | +57 308 888 9900 | Manizales",
+        "secciones": {
+            "Perfil": "Técnica en sistemas con 6 meses de experiencia apoyando pruebas de software.",
+            "Experiencia": "Auxiliar de pruebas en Software Caldas (2025), 6 meses. Diseño de casos de prueba manuales a partir de requisitos y reporte de bugs en una hoja de seguimiento. Sin experiencia en automatización.",
+            "Educación": "Técnica en Sistemas, Instituto Ficticio de Caldas (2024).",
+            "Idiomas": "Inglés A1.",
+            "Habilidades blandas": "Comunicación clara, puntualidad.",
+        },
+        "esperado": {"anios": [0.25, 0.75], "nivel_educativo": "tecnico", "vacante": "qa-tester", "veredicto": "REVISION_HUMANA"},
     },
     {
         "archivo": "hv_debil.pdf",
@@ -147,18 +162,27 @@ def _pdf_escaneado(hv: dict, destino: Path) -> None:
     png.unlink()
 
 
-def main() -> None:
-    SAMPLES.mkdir(exist_ok=True)
-    esperado = {}
-    for hv in HVS:
-        _pdf_texto(hv, SAMPLES / hv["archivo"])
-        esperado[hv["archivo"]] = {"nombre": hv["nombre"], **_contacto(hv), **hv["esperado"]}
-    _pdf_escaneado(ESCANEADA, SAMPLES / ESCANEADA["archivo"])
+def construir_esperado() -> dict:
+    esperado = {hv["archivo"]: {"nombre": hv["nombre"], **_contacto(hv), **hv["esperado"]} for hv in HVS}
     esperado[ESCANEADA["archivo"]] = {"nombre": ESCANEADA["nombre"], **ESCANEADA["esperado"]}
+    return esperado
+
+
+def main(argv: list[str] | None = None) -> None:
+    ap = argparse.ArgumentParser(description="Genera las HV sintéticas y samples/esperado.json.")
+    ap.add_argument("--solo", help="regenera solo el PDF de este archivo (los PDF cambian de bytes al regenerarse)")
+    args = ap.parse_args(argv)
+    SAMPLES.mkdir(exist_ok=True)
+    for hv in HVS:
+        if args.solo in (None, hv["archivo"]):
+            _pdf_texto(hv, SAMPLES / hv["archivo"])
+    if args.solo in (None, ESCANEADA["archivo"]):
+        _pdf_escaneado(ESCANEADA, SAMPLES / ESCANEADA["archivo"])
+    esperado = construir_esperado()
     (SAMPLES / "esperado.json").write_text(
         json.dumps(esperado, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    print(f"{len(esperado)} HV generadas en {SAMPLES}")
+    print(f"{len(esperado)} HV en el golden; PDF generados: {args.solo or 'todos'} ({SAMPLES})")
 
 
 if __name__ == "__main__":

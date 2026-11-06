@@ -1,14 +1,22 @@
 """Costura con el agente. El track IA conecta aquí el evaluador real sin tocar las rutas."""
 import os
-from collections.abc import Callable
+from typing import Protocol
 
 from app.agent import evaluar_hv
 from app.models import PerfilCandidato, ResultadoEvaluacion, Vacante, Veredicto
 
-Evaluador = Callable[[bytes, Vacante], tuple[PerfilCandidato, ResultadoEvaluacion]]
+Salida = tuple[PerfilCandidato, ResultadoEvaluacion]
 
 
-def evaluador_falso(pdf_bytes: bytes, vacante: Vacante) -> tuple[PerfilCandidato, ResultadoEvaluacion]:
+class Evaluador(Protocol):
+    """Contrato con la API: `evaluador(pdf_bytes, vacante, identidad={"nombre": str, "email": str})`.
+
+    `identidad` es un keyword opcional (None por defecto): solo sirve para anonimizar el texto antes del LLM."""
+
+    def __call__(self, pdf_bytes: bytes, vacante: Vacante, identidad: dict | None = None) -> Salida: ...
+
+
+def evaluador_falso(pdf_bytes: bytes, vacante: Vacante, identidad: dict | None = None) -> Salida:
     """Determinístico: el puntaje (50-99) depende solo de los bytes del PDF."""
     puntaje = 50 + sum(pdf_bytes) % 50
     veredicto = (Veredicto.ENTREVISTA if puntaje >= 75
@@ -34,10 +42,10 @@ def evaluador_falso(pdf_bytes: bytes, vacante: Vacante) -> tuple[PerfilCandidato
     return perfil, resultado
 
 
-def evaluador_real(pdf_bytes: bytes, vacante: Vacante) -> tuple[PerfilCandidato, ResultadoEvaluacion]:
+def evaluador_real(pdf_bytes: bytes, vacante: Vacante, identidad: dict | None = None) -> Salida:
     from app.main import _cargar_vacantes  # import tardío: main importa las rutas que importan este módulo
 
-    return evaluar_hv(pdf_bytes, vacante, _cargar_vacantes())
+    return evaluar_hv(pdf_bytes, vacante, _cargar_vacantes(), identidad=identidad)
 
 
 def get_evaluador() -> Evaluador:

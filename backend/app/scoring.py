@@ -3,6 +3,7 @@ import logging
 import re
 import unicodedata
 
+from app.anonymizer import plegar
 from app.models import (
     CriterioDetalle,
     Habilidad,
@@ -17,6 +18,12 @@ logger = logging.getLogger(__name__)
 PESO_OBLIGATORIOS = 0.7
 TOPE_KNOCKOUT = 40.0
 MAX_EVIDENCIA = 200  # caracteres de cada cita que se muestran
+MAX_FRAGMENTO = 120  # caracteres del fragmento de la HV citado como evidencia
+CONTEXTO_ANTES = 40  # caracteres previos al hallazgo que se incluyen en el fragmento
+VENTANA_NEGACION = 30  # caracteres previos al hallazgo donde se busca una negación
+# ponytail: heurística léxica; "sin X pero con Y" dentro de la ventana descarta Y. Un humano decide y ve la evidencia.
+NEGACION = re.compile(r"\b(?:sin|no\s+tengo|no\s+he|no\s+cuento\s+con|desconozco)\b")
+SALTOS_A_ESPACIO = str.maketrans("\n\t\r", "   ")  # mismo largo: los índices valen sobre el original
 UMBRAL_ENTREVISTA = 75.0
 UMBRAL_REVISION = 55.0
 ORDEN_EDUCACION = ["bachiller", "tecnico", "tecnologo", "profesional", "posgrado"]
@@ -46,8 +53,12 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", sin_tildes).strip().lower()
 
 
+def _buscar(termino: str, texto: str) -> re.Match | None:
+    return re.search(rf"(?<![\w-]){re.escape(termino)}(?![\w-])", texto)
+
+
 def _aparece(termino: str, texto: str) -> bool:
-    return re.search(rf"(?<![\w-]){re.escape(termino)}(?![\w-])", texto) is not None
+    return _buscar(termino, texto) is not None
 
 
 def _alternativas(requisito: str) -> list[str]:
@@ -66,10 +77,23 @@ def _evidencia_de(requisito: str, habilidades: list[Habilidad]) -> str | None:
     return None
 
 
-def _cubrir(requisitos: list[str], habilidades: list[Habilidad]):
+def _evidencia_en_texto(requisito: str, texto: str, plano: str) -> str | None:
+    """Cita de la HV (original, con tildes) donde aparece el requisito; `plano` es `texto` sin tildes."""
+    for a in _alternativas(requisito):
+        for m in re.finditer(rf"(?<![\w-]){re.escape(a)}(?![\w-])", plano):
+            if NEGACION.search(plano[max(0, m.start() - VENTANA_NEGACION):m.start()]):
+                continue
+            inicio = max(0, m.start() - CONTEXTO_ANTES)
+            fragmento = " ".join(texto[inicio:inicio + MAX_FRAGMENTO].split())
+            return f"Mencionado en la hoja de vida: «{fragmento}»"
+    return None
+
+
+def _cubrir(requisitos: list[str], habilidades: list[Habilidad], texto: str | None = None):
+    plano = plegar(texto).translate(SALTOS_A_ESPACIO) if texto else ""
     cumplidos, faltantes, evidencias = [], [], []
     for r in requisitos:
-        ev = _evidencia_de(r, habilidades)
+        ev = _evidencia_de(r, habilidades) or (_evidencia_en_texto(r, texto, plano) if texto else None)
         if ev is None:
             faltantes.append(r)
         else:
@@ -101,9 +125,9 @@ def _detalle(nombre, ratio, peso, cumplidos, faltantes, evidencias, nota) -> Cri
                            faltantes=faltantes, evidencias=evidencias, nota=nota)
 
 
-def _tecnico(perfil, vacante):
-    oc, of, oe = _cubrir(vacante.requisitos_obligatorios, perfil.habilidades_tecnicas)
-    dc, df, de = _cubrir(vacante.deseables, perfil.habilidades_tecnicas)
+def _tecnico(perfil, vacante, texto=None):
+    oc, of, oe = _cubrir(vacante.requisitos_obligatorios, perfil.habilidades_tecnicas, texto)
+    dc, df, de = _cubrir(vacante.deseables, perfil.habilidades_tecnicas, texto)
     ratio = PESO_OBLIGATORIOS * _ratio(oc, vacante.requisitos_obligatorios) \
         + (1 - PESO_OBLIGATORIOS) * _ratio(dc, vacante.deseables)
     if of:
@@ -126,8 +150,8 @@ def _experiencia(perfil, vacante):
                     "Tu experiencia está por debajo de lo que pide el cargo, pero tu perfil puede seguir creciendo.")
 
 
-def _blandas(perfil, vacante):
-    c, f, e = _cubrir(vacante.blandas, perfil.habilidades_blandas)
+def _blandas(perfil, vacante, texto=None):
+    c, f, e = _cubrir(vacante.blandas, perfil.habilidades_blandas, texto)
     nota = (f"Valoraríamos ver evidencia de: {_lista(f)}." if f
             else "Tu hoja de vida muestra las habilidades blandas que busca el cargo.")
     return _detalle("blandas", _ratio(c, vacante.blandas), vacante.pesos.blandas, c, f, e, nota)
@@ -190,9 +214,10 @@ def _explicacion(vacante, total, cumple, faltantes, veredicto) -> str:
     return f"Puntaje {total:g} sobre 100 para {vacante.titulo}. {oblig} Con esto {accion}, sujeto a la decisión de una persona."
 
 
-def evaluar(perfil: PerfilCandidato, vacante: Vacante) -> ResultadoEvaluacion:
-    tecnico, cumple = _tecnico(perfil, vacante)
-    criterios = [tecnico, _experiencia(perfil, vacante), _blandas(perfil, vacante),
+def evaluar(perfil: PerfilCandidato, vacante: Vacante, texto: str | None = None) -> ResultadoEvaluacion:
+    """`texto`: la HV anonimizada; si el perfil no nombra un requisito, se busca allí (robustez ante el LLM)."""
+    tecnico, cumple = _tecnico(perfil, vacante, texto)
+    criterios = [tecnico, _experiencia(perfil, vacante), _blandas(perfil, vacante, texto),
                  _educacion(perfil, vacante), _idiomas(perfil, vacante)]
     total = round(sum(c.puntaje * c.peso for c in criterios), 1)  # ratios sin redondear; se redondea solo al mostrar
     criterios = [c.model_copy(update={"puntaje": round(c.puntaje, 1)}) for c in criterios]
@@ -210,9 +235,9 @@ def evaluar(perfil: PerfilCandidato, vacante: Vacante) -> ResultadoEvaluacion:
     )
 
 
-def mejor_vacante(perfil: PerfilCandidato, vacantes: list[Vacante], actual_id: str) -> str | None:
+def mejor_vacante(perfil: PerfilCandidato, vacantes: list[Vacante], actual_id: str, texto: str | None = None) -> str | None:
     """Id de otra vacante con puntaje >= 75 y mayor que el de la actual; None si no hay."""
-    puntajes = {v.id: evaluar(perfil, v).puntaje_total for v in vacantes}
+    puntajes = {v.id: evaluar(perfil, v, texto).puntaje_total for v in vacantes}
     actual = puntajes.get(actual_id, -1.0)
     otras = {i: p for i, p in puntajes.items() if i != actual_id and p >= UMBRAL_ENTREVISTA and p > actual}
     return max(otras, key=otras.get) if otras else None

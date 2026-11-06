@@ -51,6 +51,19 @@
     "vacante": "analista-datos",
     "veredicto": "ENTREVISTA"
   },
+  "hv_qa_limite.pdf": {
+    "nombre": "Natalia Andrea Cardona Ríos",
+    "correo": "natalia.cardona.demo@example.com",
+    "telefono": "3088889900",
+    "cedula": null,
+    "anios": [
+      0.25,
+      0.75
+    ],
+    "nivel_educativo": "tecnico",
+    "vacante": "qa-tester",
+    "veredicto": "REVISION_HUMANA"
+  },
   "hv_debil.pdf": {
     "nombre": "Camilo Esteban Duarte Peña",
     "correo": "camilo.duarte.demo@example.com",
