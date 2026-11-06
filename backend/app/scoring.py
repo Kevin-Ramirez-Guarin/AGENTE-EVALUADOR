@@ -1,4 +1,5 @@
 """Reglas de negocio determinísticas (PLAN.md §5). El LLM extrae; aquí Python calcula."""
+import logging
 import re
 import unicodedata
 
@@ -10,6 +11,8 @@ from app.models import (
     Vacante,
     Veredicto,
 )
+
+logger = logging.getLogger(__name__)
 
 PESO_OBLIGATORIOS = 0.7
 TOPE_KNOCKOUT = 40.0
@@ -138,11 +141,29 @@ def _educacion(perfil, vacante):
                     "El cargo pide un nivel de formación mayor; la experiencia y los cursos también cuentan para el equipo.")
 
 
+ALIAS_IDIOMA = {"english": "ingles", "french": "frances", "german": "aleman", "portuguese": "portugues",
+                "spanish": "espanol", "italian": "italiano"}
+
+
+def _idioma(nombre: str) -> str:
+    n = _norm(nombre)
+    return ALIAS_IDIOMA.get(n, n)
+
+
+def _nivel_candidato(idioma) -> int:
+    nivel = _nivel_mcer(idioma.nivel)
+    if nivel < 0:
+        logger.warning("Nivel de idioma ilegible en la HV (%r); se cuenta como no cumplido", idioma.nivel)
+    return nivel
+
+
 def _idiomas(perfil, vacante):
-    tiene = {_norm(i.idioma): _nivel_mcer(i.nivel) for i in perfil.idiomas}
+    tiene = {_idioma(i.idioma): _nivel_candidato(i) for i in perfil.idiomas}
     cumplidos, faltantes, ratios = [], [], []
     for req in vacante.idiomas:
-        pide, nivel = _nivel_mcer(req.nivel), tiene.get(_norm(req.idioma), -1)
+        pide, nivel = _nivel_mcer(req.nivel), tiene.get(_idioma(req.idioma), -1)
+        if pide < 0:
+            raise ValueError(f"nivel de idioma ilegible en la vacante {vacante.id}: {req.nivel!r}")
         etiqueta = f"{req.idioma} {req.nivel}"
         (cumplidos if nivel >= pide else faltantes).append(etiqueta)
         ratios.append(1.0 if nivel >= pide else (nivel + 1) / (pide + 1))
