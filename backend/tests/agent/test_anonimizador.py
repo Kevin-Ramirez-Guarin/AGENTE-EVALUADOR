@@ -85,14 +85,64 @@ def test_elimina_origen_y_residencia(frase):
 
 @pytest.mark.parametrize("frase", [
     "Estado civil: Soltera", "Estado civil: Unión libre", "Casado.", "Soltero",
-    "Nacionalidad: Venezolana", "Colombiana",
+    "Nacionalidad: Venezolana", "Soy colombiana", "De origen peruano.", "Venezolano",
 ])
 def test_elimina_estado_civil_y_nacionalidad(frase):
     assert anonimizar(f"{frase}\nPython") == "Python"
 
 
-def test_una_linea_de_contacto_completa_se_reemplaza():
-    assert anonimizar("laura@example.com | +57 300 111 2233 | Medellín\nPerfil") == "[CONTACTO]\nPerfil"
+def test_una_linea_solo_de_contacto_desaparece():
+    assert anonimizar("laura@example.com | +57 300 111 2233 | Medellín\nPerfil") == "Perfil"
+
+
+def test_en_una_linea_con_contacto_solo_se_borra_el_contacto():
+    assert anonimizar("a@b.com | github.com/x | Python, SQL") == "Python, SQL"
+    assert anonimizar("Email: a@b.com | Tel: 300 111 2233 | Caracas, Venezuela | Docker") == "Docker"
+    assert anonimizar("Celular 300 111 2233 disponible.") == "Celular [TELEFONO] disponible."
+
+
+@pytest.mark.parametrize("frase", [
+    "F. nacimiento: 12/03/2000", "F. de nac.: 12/03/2000", "Fecha nac. 12-03-2000",
+    "Fecha de nac: 12 de marzo de 2000", "f.nac: 12/03/2000",
+])
+def test_elimina_abreviaturas_de_fecha_de_nacimiento(frase):
+    assert anonimizar(f"{frase}\nGit") == "Git"
+
+
+@pytest.mark.parametrize("original,esperado", [
+    ("Mujer con experiencia", "Persona con experiencia"),
+    ("Soy hombre responsable", "Soy persona responsable"),
+    ("Perfil femenino", "Perfil"),
+    ("Perfil masculino", "Perfil"),
+    ("Jefa de proyecto", "Responsable de proyecto"),
+    ("El jefe de bodega", "Responsable de bodega"),
+    ("Directora de proyectos", "Profesional de dirección de proyectos"),
+    ("Director de proyectos", "Profesional de dirección de proyectos"),
+    ("Profesora de matemáticas", "Profesional de docencia de matemáticas"),
+    ("Profesor de matemáticas", "Profesional de docencia de matemáticas"),
+    ("Presidenta del club", "Persona en la presidencia del club"),
+    ("Presidente del club", "Persona en la presidencia del club"),
+    ("Coordinadora de QA", "Profesional de coordinación de QA"),
+    ("Coordinador de QA", "Profesional de coordinación de QA"),
+    ("Gerenta de ventas", "Gerente de ventas"),
+    ("Ellas lideraron", "lideraron"),
+    ("Ellos lideraron", "lideraron"),
+])
+def test_neutraliza_mas_roles_y_pronombres(original, esperado):
+    assert anonimizar(original) == esperado
+    assert contiene_genero(original) != [] and contiene_genero(esperado) == []
+
+
+def test_no_confunde_direccion_ni_profesional_con_roles_de_genero():
+    texto = "Dirección de proyectos con enfoque profesional"
+    assert anonimizar(texto) == texto
+
+
+@pytest.mark.parametrize("texto", [
+    "Colegio Colombiano de Ingenieros", "Cámara Colombiana de la Construcción", "Estudié en la Universidad Venezolana",
+])
+def test_gentilicio_dentro_de_una_institucion_no_se_borra(texto):
+    assert anonimizar(texto) == texto
 
 
 def test_lineas_de_datos_eliminadas_no_dejan_huecos_ni_separadores():
