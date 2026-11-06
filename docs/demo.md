@@ -14,9 +14,8 @@ Presentan tres personas: **Santiago** (portal y experiencia), **Kevin** (IA) y *
 - [ ] Puertos libres: backend en **8000** y frontend en **5173** (`netstat -ano | findstr :8000`). El backend solo acepta CORS desde `http://localhost:5173`: abre esa URL exacta, no `127.0.0.1`.
 - [ ] BD limpia para la demo y backend arriba (desde `backend/`):
   ```powershell
-  $env:DATABASE_URL="sqlite:///./demo.db"; uvicorn app.main:app --env-file .env
+  $env:DATABASE_URL="sqlite:///./demo.db"; uvicorn app.main:app
   ```
-  Usa `--env-file`: sin él, `EVALUADOR` y `MODO_EVALUACION` no se leen del `.env` hasta la primera llamada a Gemini.
 - [ ] Frontend: `cd frontend && npm run dev`.
 - [ ] **Datos semilla:** `python -m scripts.sembrar_demo` (desde `backend/`). Sube 7 HV sintéticas por el mismo endpoint del portal. Espera a que todas digan "Pendiente de revisión" en `/panel` (el agente tarda ~15–27 s por HV); si alguna queda en error, ábrela y pulsa **Reintentar**.
 - [ ] Pestañas abiertas en orden: `/vacantes`, `/panel`, bandeja del equipo, Google Calendar, `/como-evaluamos`, `docs/sesgo/resultados.md` en GitHub.

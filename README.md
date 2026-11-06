@@ -30,7 +30,7 @@ python -m venv .venv
 .venv/Scripts/activate
 pip install -r requirements.txt
 cp .env.example .env            # pon tu GEMINI_API_KEY (ver ONBOARDING.md §2)
-uvicorn app.main:app --reload --env-file .env
+uvicorn app.main:app --reload
 ```
 
 **Frontend** (puerto 5173; `frontend/.env.development` ya apunta al backend local):
@@ -51,8 +51,6 @@ Abre http://localhost:5173: portal del candidato en `/vacantes`, panel del reclu
 | `MODO_EVALUACION` | `agente` (defecto) · `pipeline` | `agente` orquesta las herramientas con LangChain (~15–27 s por HV); `pipeline` hace una sola llamada al LLM, más rápido y barato |
 | `GEMINI_MODEL` | `gemini-3.1-flash-lite` | Google renombra los modelos seguido |
 | `DATABASE_URL`, `UPLOADS_DIR` | opcionales | BD SQLite y carpeta de PDF (por defecto `backend/agente.db` y `backend/uploads/`) |
-
-> Pasa `--env-file .env` a uvicorn (como arriba) o exporta las variables en la terminal. Sin eso, `EVALUADOR` y `MODO_EVALUACION` solo se leen del `.env` después de la primera llamada a Gemini.
 
 Para probar sin Gemini en un solo comando: `EVALUADOR=falso uvicorn app.main:app --reload` (PowerShell: `$env:EVALUADOR="falso"; uvicorn app.main:app --reload`).
 
