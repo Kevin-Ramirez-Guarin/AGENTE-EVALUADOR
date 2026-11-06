@@ -45,6 +45,12 @@ def test_pdf_exactamente_5mb_ok(client):
     assert postular(client, pdf=PDF + b"0" * (MB5 - len(PDF))).status_code == 201
 
 
+def test_contacto_invalido_422(client):
+    for kw in (dict(email="no-es-email"), dict(email="a@b"), dict(email="a b@c.co"),
+               dict(email="a" * 250 + "@b.co"), dict(nombre=""), dict(nombre="n" * 201)):
+        assert postular(client, **kw).status_code == 422, kw
+
+
 def test_consentimiento_false_422(client):
     assert postular(client, consentimiento="false").status_code == 422
 

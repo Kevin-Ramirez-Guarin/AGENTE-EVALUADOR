@@ -132,6 +132,28 @@ def test_decision_concurrente_solo_gana_una(client, engine):
         assert s.exec(select(Auditoria).where(Auditoria.evento == "decision")).all() == []
 
 
+def test_decision_campos_fuera_de_rango_422(client):
+    postular(client)
+    s = _sugerido(client)
+    for extra in ({"reclutador": ""}, {"reclutador": "x" * 101}, {"motivo": "m" * 1001}, {"motivo": ""}):
+        body = {"veredicto": s, "reclutador": "x", **extra}
+        assert client.post("/evaluaciones/1/decision", json=body).status_code == 422, extra
+
+
+def test_listar_paginacion(client):
+    for i in range(3):
+        postular(client, pdf=PDF + bytes([i]) * (i + 1))
+    todos = client.get("/evaluaciones").json()
+    assert len(client.get("/evaluaciones", params={"limit": 2}).json()) == 2
+    assert client.get("/evaluaciones", params={"limit": 2, "offset": 2}).json() == todos[2:]
+    assert client.get("/evaluaciones", params={"offset": 3}).json() == []
+
+
+def test_listar_limites_invalidos_422(client):
+    for params in ({"limit": 0}, {"limit": 201}, {"offset": -1}):
+        assert client.get("/evaluaciones", params=params).status_code == 422, params
+
+
 def test_decision_404(client):
     r = client.post("/evaluaciones/9/decision", json={"veredicto": "ENTREVISTA", "reclutador": "x"})
     assert r.status_code == 404
