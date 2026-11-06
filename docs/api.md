@@ -1,6 +1,6 @@
 # Contrato de la API
 
-Base: `http://localhost:8000`. Todo es JSON salvo la carga del PDF. Las rutas marcadas como *planeada* aún no existen (F4): el frontend puede usar estos ejemplos como mocks. Los modelos están en `backend/app/models.py`.
+Base: `http://localhost:8000`. Todo es JSON salvo la carga del PDF. Todas las rutas de este documento están implementadas. Los errores HTTP devuelven `{"detail": "mensaje"}` (en 422 de validación de campos, `detail` es una lista de errores de FastAPI). Los modelos están en `backend/app/models.py`.
 
 ## GET /health  (implementada)
 ```json
@@ -26,7 +26,7 @@ Base: `http://localhost:8000`. Todo es JSON salvo la carga del PDF. Las rutas ma
 ```
 `GET /vacantes/{id}` (implementada) devuelve una sola vacante; 404 `{"detail": "Vacante no encontrada"}` si no existe.
 
-## POST /postulaciones  (planeada)
+## POST /postulaciones  (implementada)
 `multipart/form-data`:
 
 | Campo | Tipo | Notas |
@@ -40,10 +40,10 @@ Base: `http://localhost:8000`. Todo es JSON salvo la carga del PDF. Las rutas ma
 ```json
 { "evaluacion_id": 12, "estado": "pendiente_revision" }
 ```
-Errores: 404 vacante inexistente; 415 no es PDF; 413 PDF > 5 MB; 422 sin consentimiento.
+Errores: 404 vacante inexistente; 415 no es PDF; 413 PDF > 5 MB (o cuerpo mayor a ~5,1 MB); 422 sin consentimiento o campos inválidos (`nombre` 1-200 caracteres, `email` con formato válido y máx. 254); 502 el evaluador falló (no se guarda nada).
 
-## GET /evaluaciones  (planeada)
-Panel del reclutador. Query opcional: `vacante_id`, `estado`.
+## GET /evaluaciones  (implementada)
+Panel del reclutador, ordenado por puntaje descendente. Query opcional: `vacante_id`, `estado`, `limit` (1-200, por defecto 50) y `offset` (>= 0, por defecto 0).
 ```json
 [
   {
@@ -58,7 +58,7 @@ Panel del reclutador. Query opcional: `vacante_id`, `estado`.
 ]
 ```
 
-## GET /evaluaciones/{id}  (planeada)
+## GET /evaluaciones/{id}  (implementada)
 200 (404 si no existe):
 ```json
 {
@@ -89,7 +89,7 @@ Panel del reclutador. Query opcional: `vacante_id`, `estado`.
 ```
 `veredicto_sugerido` / `veredicto_final`: `ENTREVISTA`, `REVISION_HUMANA` o `NO_CONTINUA`.
 
-## POST /evaluaciones/{id}/decision  (planeada)
+## POST /evaluaciones/{id}/decision  (implementada)
 Solo aquí, al aprobar, se envían el correo y el evento de Calendar.
 
 Cuerpo:
@@ -102,4 +102,4 @@ Cuerpo:
 ```json
 { "id": 12, "veredicto_final": "ENTREVISTA", "estado": "decidida", "entrevista": { "inicio": "2026-11-09T10:00:00-05:00", "meet_link": "https://meet.google.com/xxx-xxxx-xxx" } }
 ```
-`entrevista` es `null` si el veredicto no es `ENTREVISTA`. Errores: 404 evaluación inexistente; 422 falta motivo; 409 ya decidida.
+`entrevista` es `null` si el veredicto no es `ENTREVISTA`; en este sprint siempre es `null` (aún no se envía correo ni se agenda). `motivo` máx. 1000 caracteres y `reclutador` 1-100 (lo declara el cliente; sin autenticación por ahora). Errores: 404 evaluación inexistente; 422 falta motivo; 409 ya decidida.
