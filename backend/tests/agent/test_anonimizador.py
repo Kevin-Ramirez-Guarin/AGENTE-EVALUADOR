@@ -218,6 +218,25 @@ def test_contiene_genero_si_cuenta_la_palabra_fuera_de_la_forma_neutra():
     assert contiene_genero("Formación técnica en redes y técnica en sistemas") == ["tecnica en"]
 
 
+@pytest.mark.parametrize("texto", [
+    "posee experiencia técnica en despliegue con Docker",
+    "Sólida formación técnica en redes", "Tiene habilidad técnica en SQL", "Capacidad técnica en pruebas",
+    "Buena base técnica en Python", "Perfil técnica en datos", "Conocimiento técnica en APIs",
+    "Experiencia tecnóloga en bases de datos",
+])
+def test_un_adjetivo_tras_un_sustantivo_no_es_un_rol_de_persona(texto):
+    assert contiene_genero(texto) == []
+    assert anonimizar(texto) == texto
+
+
+@pytest.mark.parametrize("texto", [
+    "Es técnica en sistemas", "Desarrolladora backend con 3 años", "Trabaja como técnico en redes",
+    "Soy tecnóloga en ADSO", "La técnica en sistemas lideró",
+])
+def test_un_rol_de_persona_si_se_detecta(texto):
+    assert contiene_genero(texto) != []
+
+
 def test_es_deterministico_e_idempotente():
     texto = "Ingeniera de sistemas. Edad: 25. laura@example.com"
     una = anonimizar(texto, ID)
