@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { expect, type Page } from '@playwright/test'
 
-// PDF mínimo válido generado en la prueba.
-export const PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF')
+// HV sintética real, con texto: el backend extrae el texto al recibir la postulación.
+export const PDF = readFileSync(path.resolve(__dirname, '../samples/hv_backend_fuerte_1.pdf'))
 
 export async function aplicar(page: Page, nombre: string) {
   await page.goto('/aplicar/backend-jr')

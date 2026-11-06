@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { PDF } from './helpers'
 
-// PDF mínimo válido generado en la prueba.
-const PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF')
 
 test('el candidato se postula y ve el mensaje de éxito sin puntaje', async ({ page }) => {
   await page.goto('/vacantes')
