@@ -22,6 +22,7 @@ NIVEL_NATIVO = len(MCER) - 1
 # ponytail: sinónimos a mano para unos pocos términos del catálogo; si crecen las vacantes,
 # pasarlos a vacantes.json o a embeddings. Fuera de este diccionario solo vale la coincidencia literal.
 SINONIMOS = {
+    "python": ("django", "fastapi", "flask", "pandas", "pytest"),
     "sql": ("postgresql", "mysql", "sqlite", "sql server"),
     "javascript": ("js", "node.js", "nodejs"),
     "estadistica basica": ("estadistica",),
