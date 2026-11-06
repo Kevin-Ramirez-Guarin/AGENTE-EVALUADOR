@@ -21,6 +21,6 @@ def test_con_api_key_la_devuelve(monkeypatch):
 
 def test_modelo_por_defecto_y_override(monkeypatch):
     monkeypatch.delenv("GEMINI_MODEL", raising=False)
-    assert config.get_model() == "gemini-3-flash-preview"
+    assert config.get_model() == "gemini-3.1-flash-lite"
     monkeypatch.setenv("GEMINI_MODEL", "otro")
     assert config.get_model() == "otro"
