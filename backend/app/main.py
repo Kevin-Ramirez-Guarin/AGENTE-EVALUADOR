@@ -2,12 +2,15 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.models import Vacante
 
 VACANTES_PATH = Path(__file__).resolve().parent.parent / "data" / "vacantes.json"
 
 app = FastAPI(title="Agente Evaluador")
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
+                   allow_methods=["*"], allow_headers=["*"])
 
 
 def _cargar_vacantes() -> list[Vacante]:
@@ -30,3 +33,8 @@ def obtener_vacante(vacante_id: str):
         if v.id == vacante_id:
             return v
     raise HTTPException(status_code=404, detail="Vacante no encontrada")
+
+
+from app.routes import router  # noqa: E402  (routes usa _cargar_vacantes de este módulo)
+
+app.include_router(router)
