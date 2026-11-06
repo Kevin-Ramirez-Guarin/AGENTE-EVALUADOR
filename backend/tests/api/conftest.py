@@ -26,7 +26,7 @@ def _evaluador_falso_por_defecto(monkeypatch):
 @pytest.fixture(autouse=True)
 def _pdf_con_texto_por_defecto(monkeypatch):
     """Los PDF mínimos de las pruebas no tienen texto; la validación síncrona se prueba aparte."""
-    monkeypatch.setattr("app.routes.extraer_texto_pdf", lambda _b: "texto", raising=False)
+    monkeypatch.setattr("app.routes.extraer_texto_pdf", lambda _b: "texto")
 
 
 @pytest.fixture
