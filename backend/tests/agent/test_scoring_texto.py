@@ -1,4 +1,6 @@
 """Robustez del matching: si el LLM no nombró un requisito pero la HV (anonimizada) sí lo dice."""
+import pytest
+
 from app.scoring import evaluar, mejor_vacante
 from tests.agent.test_scoring import VACANTES, crit, perfil, vacante
 
@@ -59,3 +61,28 @@ def test_mejor_vacante_tambien_usa_el_texto():
     p = perfil(tec=["React", "HTML/CSS", "TypeScript"], anios=3, edu="profesional", idiomas=[("inglés", "B1")])
     assert mejor_vacante(p, VACANTES, "backend-jr") is None
     assert mejor_vacante(p, VACANTES, "backend-jr", HV) == "frontend-react"
+
+
+# ── negaciones: "sin experiencia en SQL" no cuenta como SQL ─────────────────────
+@pytest.mark.parametrize("texto", [
+    "Sin experiencia en SQL.",
+    "No tengo experiencia con SQL.",
+    "No he usado SQL.",
+    "No cuento con SQL.",
+    "Desconozco SQL.",
+    "SIN conocimientos de SQL",
+])
+def test_una_negacion_cercana_descarta_la_coincidencia_en_el_texto(texto):
+    res = evaluar(perfil(), vacante(requisitos_obligatorios=["SQL"]), texto)
+    assert crit(res, "tecnico").faltantes == ["SQL"] and not res.cumple_obligatorios
+
+
+@pytest.mark.parametrize("texto", [
+    "Domino SQL. Sin experiencia en Docker.",
+    "Sin SQL antes; hoy uso SQL a diario.",
+    "Sin experiencia previa en otros temas, pero trabajo en equipo todos los días con consultas SQL avanzadas.",
+    "Es un asistente que sinceramente usa SQL",
+])
+def test_si_hay_una_mencion_sin_negacion_cercana_cuenta(texto):
+    res = evaluar(perfil(), vacante(requisitos_obligatorios=["SQL"]), texto)
+    assert crit(res, "tecnico").cumplidos == ["SQL"]
