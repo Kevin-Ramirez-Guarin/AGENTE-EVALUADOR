@@ -295,6 +295,29 @@ describe('Detalle', () => {
     expect(screen.queryByRole('link', { name: /meet/i })).not.toBeInTheDocument()
   })
 
+  it('una entrevista guardada muestra fecha, hora de Colombia y el botón para unirse', async () => {
+    vi.mocked(api.getEvaluacion).mockResolvedValue({
+      ...base, estado: 'decidida', veredicto_final: 'ENTREVISTA',
+      entrevista: { inicio: '2026-11-09T15:00:00Z', meet_link: 'https://meet.google.com/abc-defg-hij' },
+    })
+    renderAt(12)
+    const tarjeta = await screen.findByRole('region', { name: /entrevista agendada/i })
+    expect(tarjeta).toHaveTextContent(/lunes, 9 de noviembre de 2026/i)
+    expect(tarjeta).toHaveTextContent(/10:00/)
+    expect(tarjeta).toHaveTextContent(/hora de colombia/i)
+    const unirse = screen.getByRole('link', { name: /unirse a la reunión/i })
+    expect(unirse).toHaveAttribute('href', 'https://meet.google.com/abc-defg-hij')
+    expect(unirse).toHaveAttribute('target', '_blank')
+    expect(unirse).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('sin entrevista agendada no muestra la tarjeta', async () => {
+    vi.mocked(api.getEvaluacion).mockResolvedValue({ ...base, estado: 'decidida', veredicto_final: 'NO_CONTINUA', entrevista: null })
+    renderAt(12)
+    await screen.findByText(/decisión registrada/i)
+    expect(screen.queryByRole('region', { name: /entrevista agendada/i })).not.toBeInTheDocument()
+  })
+
   it('al navegar a otra evaluación ignora la respuesta tardía de la anterior', async () => {
     let resolver12: (e: api.EvaluacionDetalle) => void = () => {}
     vi.mocked(api.getEvaluacion).mockImplementation((id) =>
