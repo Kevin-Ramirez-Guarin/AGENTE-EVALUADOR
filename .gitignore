@@ -64,6 +64,7 @@ logs/
 Thumbs.db
 desktop.ini
 .claude/settings.local.json
+.claude/worktrees/
 
 # Archivos que se comparten por fuera de GitHub (WhatsApp)
 compartir/
