@@ -9,8 +9,12 @@ const backend = path.resolve(__dirname, '../backend')
 const venvPython = path.join(backend, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 const python = existsSync(venvPython) ? venvPython : 'python'
 const db = path.join(tmpdir(), 'agente-e2e.db')
-// Los workers también cargan este archivo; solo el proceso principal limpia la BD.
-if (!process.env.TEST_WORKER_INDEX) rmSync(db, { force: true })
+const uploads = path.join(tmpdir(), 'agente-e2e-uploads')
+// Los workers también cargan este archivo; solo el proceso principal limpia BD y PDFs.
+if (!process.env.TEST_WORKER_INDEX) {
+  rmSync(db, { force: true })
+  rmSync(uploads, { recursive: true, force: true })
+}
 
 export default defineConfig({
   testDir: '.',
@@ -21,7 +25,7 @@ export default defineConfig({
       command: `"${python}" -m uvicorn app.main:app --port 8000`,
       cwd: backend,
       url: 'http://localhost:8000/health',
-      env: { EVALUADOR: 'falso', DATABASE_URL: `sqlite:///${db.replaceAll('\\', '/')}` },
+      env: { EVALUADOR: 'falso', DATABASE_URL: `sqlite:///${db.replaceAll('\\', '/')}`, UPLOADS_DIR: uploads },
       reuseExistingServer: false,
     },
     {
