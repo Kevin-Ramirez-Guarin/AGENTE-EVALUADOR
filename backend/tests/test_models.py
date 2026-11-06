@@ -118,3 +118,16 @@ def test_puntajes_fuera_de_0_100_fallan():
     with pytest.raises(ValidationError):
         ResultadoEvaluacion(**{**base, "puntajes_por_criterio": {"tecnico": 101}}, puntaje_total=50)
     assert ResultadoEvaluacion(puntaje_total=100, **base).puntaje_total == 100
+
+
+def test_criterio_detalle_y_criterios_por_defecto_vacios():
+    from app.models import CriterioDetalle
+
+    base = dict(puntaje_total=50, puntajes_por_criterio={}, veredicto_sugerido=Veredicto.NO_CONTINUA,
+                cumple_obligatorios=False, explicacion="ok")
+    assert ResultadoEvaluacion(**base).criterios == []
+    c = CriterioDetalle(criterio="tecnico", puntaje=70, peso=0.45, nota="ok")
+    assert c.cumplidos == [] and c.faltantes == [] and c.evidencias == []
+    for malo in ({"criterio": "otro"}, {"puntaje": 101}, {"peso": 1.1}):
+        with pytest.raises(ValidationError):
+            CriterioDetalle(**{"criterio": "tecnico", "puntaje": 1, "peso": 0.1, "nota": "x", **malo})

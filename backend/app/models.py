@@ -64,6 +64,17 @@ class Veredicto(str, Enum):
     NO_CONTINUA = "NO_CONTINUA"
 
 
+class CriterioDetalle(BaseModel):
+    """Desglose explicable de un criterio (derecho a la explicación, PLAN.md §7)."""
+    criterio: Literal["tecnico", "experiencia", "blandas", "educacion", "idiomas"]
+    puntaje: Puntaje
+    peso: Peso
+    cumplidos: list[str] = []
+    faltantes: list[str] = []
+    evidencias: list[str] = []
+    nota: str
+
+
 class ResultadoEvaluacion(BaseModel):
     puntaje_total: Puntaje
     puntajes_por_criterio: dict[str, Puntaje]
@@ -71,3 +82,4 @@ class ResultadoEvaluacion(BaseModel):
     cumple_obligatorios: bool
     explicacion: str
     mejor_vacante_alternativa: str | None = None  # id de otra vacante con ≥ 75
+    criterios: list[CriterioDetalle] = []  # cambio aditivo: detalle por criterio
