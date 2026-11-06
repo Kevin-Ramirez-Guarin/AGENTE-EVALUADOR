@@ -48,7 +48,7 @@ Un sistema donde un candidato se postula a una vacante subiendo su hoja de vida 
 **Stack y motivo**
 
 - **Backend: Python + FastAPI.** LangChain es nativo en Python. FastAPI genera la documentación `/docs` gratis.
-- **LLM: `ChatGoogleGenerativeAI(vertexai=True, api_key=...)`** de `langchain-google-genai` 4.x. Usa Vertex AI en *express mode*. El modelo va en la variable `GEMINI_MODEL`, porque Google cambia los nombres seguido. Arrancamos con `gemini-3-flash-preview` (está confirmado en express mode) y probamos `gemini-3.1-flash-lite`, que es más barato.
+- **LLM: `ChatGoogleGenerativeAI(vertexai=True, api_key=...)`** de `langchain-google-genai` 4.x. Usa Vertex AI en *express mode*. El modelo va en la variable `GEMINI_MODEL`, porque Google cambia los nombres seguido. Usamos `gemini-3.1-flash-lite` (GA y el más barato, verificado el 2026-11-06). `gemini-3-flash-preview` queda como alternativa.
 - **Agente: `langchain.agents.create_agent`** (LangChain 1.x, corre sobre LangGraph) con `response_format` = modelo Pydantic.
 - **BD: SQLite.** Es un archivo, no hay servidor que instalar, y alcanza para un MVP.
 - **Frontend: React + Vite + Tailwind.** Son dos vistas, sin librería de estado.
