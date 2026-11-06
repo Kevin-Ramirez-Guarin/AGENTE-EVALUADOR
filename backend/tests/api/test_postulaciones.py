@@ -1,6 +1,12 @@
+import json
+
+from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app.db import Auditoria, Candidato, Evaluacion, Postulacion
+from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_session
+from app.evaluador import get_evaluador
+from app.main import app
+from app.routes import get_uploads_dir
 from tests.api.conftest import PDF, postular
 
 MB5 = 5 * 1024 * 1024
@@ -49,12 +55,82 @@ def test_consentimiento_ausente_422(client):
     assert r.status_code == 422
 
 
+def _evaluador_roto(pdf, vacante):
+    raise RuntimeError("LLM caído")
+
+
+def _rechazos():
+    return [
+        dict(consentimiento="false"),
+        dict(content_type="text/plain"),
+        dict(pdf=b"MZ no soy pdf"),
+        dict(pdf=PDF + b"0" * MB5),
+        dict(vacante_id="nada"),
+    ]
+
+
 def test_rechazo_no_persiste_nada(client, engine, uploads):
-    postular(client, consentimiento="false")
-    postular(client, content_type="text/plain")
+    for kw in _rechazos():
+        assert postular(client, **kw).status_code >= 400
+    app.dependency_overrides[get_evaluador] = lambda: _evaluador_roto
+    assert postular(client).status_code == 502
     with Session(engine) as s:
         assert s.exec(select(Candidato)).all() == []
+        assert s.exec(select(Postulacion)).all() == []
+        assert s.exec(select(Evaluacion)).all() == []
     assert list(uploads.iterdir()) == []
+
+
+def test_rechazos_quedan_en_auditoria_sin_datos_personales(client, engine):
+    for kw in _rechazos():
+        postular(client, **kw)
+    with Session(engine) as s:
+        filas = s.exec(select(Auditoria)).all()
+    assert len(filas) == len(_rechazos())
+    assert {f.evento for f in filas} == {"postulacion_rechazada"}
+    assert all(f.evaluacion_id is None for f in filas)
+    assert not any("Ana" in f.detalle or "ana@example.com" in f.detalle for f in filas)
+    assert {json.loads(f.detalle)["status"] for f in filas} == {422, 415, 413, 404}
+
+
+def test_evaluador_falla_502_y_audita(client, engine):
+    app.dependency_overrides[get_evaluador] = lambda: _evaluador_roto
+    r = postular(client)
+    assert r.status_code == 502
+    with Session(engine) as s:
+        a = s.exec(select(Auditoria)).one()
+    assert a.evento == "evaluacion_fallida"
+    assert "backend-jr" in a.detalle
+
+
+def test_fallo_de_bd_borra_pdf_y_hace_rollback(engine, uploads):
+    class SesionRota(Session):
+        def commit(self):
+            raise RuntimeError("BD caída")
+
+    def _session():
+        with SesionRota(engine) as s:
+            yield s
+
+    app.dependency_overrides[get_session] = _session
+    app.dependency_overrides[get_uploads_dir] = lambda: uploads
+    try:
+        r = postular(TestClient(app, raise_server_exceptions=False))
+    finally:
+        app.dependency_overrides.clear()
+    assert r.status_code == 500
+    assert list(uploads.iterdir()) == []
+    with Session(engine) as s:
+        assert s.exec(select(Candidato)).all() == []
+
+
+def test_creada_incluye_consentimiento_at_en_auditoria(client, engine):
+    postular(client)
+    with Session(engine) as s:
+        a = s.exec(select(Auditoria)).one()
+        p = s.exec(select(Postulacion)).one()
+    # SQLite devuelve la fecha sin zona; el detalle conserva la zona UTC.
+    assert json.loads(a.detalle)["consentimiento_at"].startswith(p.consentimiento_at.isoformat())
 
 
 def test_persiste_consentimiento_y_contacto_aparte(client, engine):
