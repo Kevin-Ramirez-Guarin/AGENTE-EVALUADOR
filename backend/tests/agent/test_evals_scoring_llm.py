@@ -14,7 +14,7 @@ VACANTES = [Vacante(**v) for v in json.loads((RAIZ / "backend" / "data" / "vacan
 POR_ID = {v.id: v for v in VACANTES}
 CON_VACANTE = [a for a, e in GOLDEN.items() if e.get("vacante")]
 SIN_VACANTE = [a for a, e in GOLDEN.items() if "error" not in e and not e.get("vacante")]
-TOLERANCIA_REPRODUCIBILIDAD = 10  # puntos entre dos corridas
+TOLERANCIA_REPRODUCIBILIDAD = 5  # puntos entre dos corridas
 UMBRAL_ALTO = 75
 
 llm = pytest.mark.llm
