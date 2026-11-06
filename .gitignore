@@ -1,0 +1,66 @@
+# ─── Secretos y credenciales (NUNCA al repo) ───────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials*.json
+client_secret*.json
+token*.json
+service-account*.json
+*-sa.json
+gcloud/
+.secrets/
+
+# ─── Datos personales de candidatos (Ley 1581) ─────────────────
+# Solo se versionan HV sintéticas en samples/. Las reales jamás.
+uploads/
+backend/uploads/
+data/private/
+**/hv_reales/
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ─── Node / Frontend ───────────────────────────────────────────
+node_modules/
+dist/
+build/
+.vite/
+*.local
+npm-debug.log*
+
+# ─── Pruebas e2e y carga ───────────────────────────────────────
+playwright-report/
+test-results/
+blob-report/
+locust_report*.html
+*.csv.stats
+
+# ─── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+
+# ─── Editores, SO y herramientas locales ───────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+.claude/settings.local.json
