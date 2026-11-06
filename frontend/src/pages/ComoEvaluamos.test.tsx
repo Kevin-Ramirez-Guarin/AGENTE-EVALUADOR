@@ -73,7 +73,7 @@ describe('ComoEvaluamos', () => {
     for (const d of [/conocer/i, /actualizar/i, /rectificar/i, /revocar/i, /revisión humana/i]) {
       expect(within(derechos).getByText(d)).toBeInTheDocument()
     }
-    expect(screen.getByRole('link', { name: /privacidad@nexodigital\.example/ })).toHaveAttribute('href', 'mailto:privacidad@nexodigital.example')
+    expect(screen.getByRole('link', { name: /privacidad@giveaway\.example/ })).toHaveAttribute('href', 'mailto:privacidad@giveaway.example')
   })
 })
 
