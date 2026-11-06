@@ -18,7 +18,8 @@ export function Panel() {
 
   useEffect(() => {
     let vigente = true
-    getEvaluaciones({ vacante_id: vacanteId || undefined, limit: LIMIT, offset }).then(
+    // Se pide una fila de más solo para saber si existe una página siguiente.
+    getEvaluaciones({ vacante_id: vacanteId || undefined, limit: LIMIT + 1, offset }).then(
       (f) => vigente && (setFilas(f), setError(false)),
       () => vigente && setError(true),
     )
@@ -26,6 +27,16 @@ export function Panel() {
       vigente = false
     }
   }, [vacanteId, offset])
+
+  // Limpia filas y error para no mostrar datos viejos ni dejar "Siguiente" activo mientras carga.
+  const ir = (vacante: string, desde: number) => {
+    setFilas(null)
+    setError(false)
+    setVacanteId(vacante)
+    setOffset(desde)
+  }
+  const hayMas = (filas?.length ?? 0) > LIMIT
+  const visibles = filas?.slice(0, LIMIT)
 
   const titulo = (id: string) => vacantes.find((v) => v.id === id)?.titulo ?? id
 
@@ -39,7 +50,7 @@ export function Panel() {
         <select
           id="filtro-vacante"
           value={vacanteId}
-          onChange={(e) => (setVacanteId(e.target.value), setOffset(0))}
+          onChange={(e) => ir(e.target.value, 0)}
           className="rounded border border-slate-300 bg-white px-2 py-1"
         >
           <option value="">Todas</option>
@@ -50,9 +61,9 @@ export function Panel() {
       </div>
 
       {error && <p role="alert" className="mt-4 text-red-700">No pudimos cargar las evaluaciones. Intenta de nuevo más tarde.</p>}
-      {!error && !filas && <p role="status" className="mt-4">Cargando evaluaciones…</p>}
+      {!error && !filas && <p role="status" aria-busy="true" className="mt-4">Cargando evaluaciones…</p>}
       {!error && filas?.length === 0 && <p className="mt-4">No hay evaluaciones para mostrar.</p>}
-      {!error && !!filas?.length && (
+      {!error && !!visibles?.length && (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse bg-white text-left text-sm">
             <caption className="sr-only">Evaluaciones ordenadas por puntaje</caption>
@@ -64,7 +75,7 @@ export function Panel() {
               </tr>
             </thead>
             <tbody>
-              {filas.map((f) => (
+              {visibles.map((f) => (
                 <tr key={f.id} className="border-b border-slate-200">
                   <td className="px-3 py-2">
                     <Link to={`/panel/${f.id}`} className="font-medium text-indigo-800 underline focus-visible:outline-2 focus-visible:outline-indigo-700">{f.candidato}</Link>
@@ -82,8 +93,8 @@ export function Panel() {
       )}
 
       <nav aria-label="Paginación" className="mt-4 flex gap-2">
-        <button type="button" className={btn} disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - LIMIT))}>Anterior</button>
-        <button type="button" className={btn} disabled={(filas?.length ?? 0) < LIMIT} onClick={() => setOffset(offset + LIMIT)}>Siguiente</button>
+        <button type="button" className={btn} disabled={offset === 0} onClick={() => ir(vacanteId, Math.max(0, offset - LIMIT))}>Anterior</button>
+        <button type="button" className={btn} disabled={!hayMas} onClick={() => ir(vacanteId, offset + LIMIT)}>Siguiente</button>
       </nav>
     </section>
   )
