@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-DEFAULT_MODEL = "gemini-3-flash-preview"
+DEFAULT_MODEL = "gemini-3.1-flash-lite"
 
 
 def get_api_key() -> str:
