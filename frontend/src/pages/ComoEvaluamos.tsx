@@ -59,8 +59,9 @@ export function ComoEvaluamos() {
       <section aria-labelledby="h-datos" className="space-y-3">
         <h2 id="h-datos" className={h2}>Lo que la IA no ve</h2>
         <p>
-          Tu nombre, género, edad y origen se ocultan antes de que la IA lea tu hoja de vida, para que esos datos no
-          influyan en la sugerencia.
+          Antes de que la IA lea tu hoja de vida, quitamos tus datos de identificación y contacto (nombre, correo,
+          teléfono, documento, edad, estado civil y origen) y neutralizamos las palabras que revelan el género, para
+          que esos datos no influyan en la sugerencia.
         </p>
       </section>
 
@@ -74,6 +75,9 @@ export function ComoEvaluamos() {
           Para ejercerlos escríbenos a{' '}
           <a href={`mailto:${CORREO}`} className="text-indigo-800 underline">{CORREO}</a> indicando tu nombre y la
           vacante a la que te postulaste.
+        </p>
+        <p className="text-sm text-slate-700">
+          Este correo es un canal de demostración: esto es un proyecto académico y Nexo Digital es una empresa ficticia.
         </p>
       </section>
     </article>

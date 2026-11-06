@@ -16,7 +16,7 @@ Cómo la interfaz informa a la persona candidata, le pide su autorización y le 
 Está escrita en lenguaje claro y explica:
 - Los 5 criterios con su peso: los de la vacante si llega `?vacante=`, o los genéricos de PLAN §5 (45/25/15/10/5 %).
 - Que la IA solo extrae información y sugiere, y que **una persona decide**.
-- Que nombre, género, edad y origen se ocultan antes de que la IA lea la hoja de vida.
+- Que antes de que la IA lea la hoja de vida se quitan los datos de identificación y contacto (nombre, correo, teléfono, documento, edad, estado civil y origen) y se neutralizan las palabras que revelan el género.
 - Los derechos de la Ley 1581 (conocer, actualizar, rectificar, revocar la autorización y pedir revisión humana) y cómo ejercerlos: escribir a `privacidad@nexodigital.example` (correo ficticio de Nexo Digital).
 
 ## Explicación al reclutador
@@ -36,4 +36,5 @@ Está escrita en lenguaje claro y explica:
 - No se probó axe sobre los estados «En evaluación» y «Error en la evaluación» en e2e, porque el backend de `main` aún es síncrono; se cubren con pruebas unitarias.
 - El panel no tiene autenticación (aviso «Demo sin autenticación») y el reclutador se declara a sí mismo.
 - «Cómo evaluamos» describe el diseño. La ausencia de sesgo se demuestra con la prueba contrafactual del backend, no con esta página.
-- El correo de contacto es ficticio y no hay un canal real de atención de derechos.
+- La neutralización del género usa una lista finita de términos: una palabra que no esté en la lista no se neutraliza.
+- El correo de contacto es un canal de demostración (proyecto académico, empresa ficticia): no hay un canal real de atención de derechos, y la página lo dice explícitamente.
