@@ -1,14 +1,22 @@
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.db import get_engine
 from app.models import Vacante
 
 VACANTES_PATH = Path(__file__).resolve().parent.parent / "data" / "vacantes.json"
 
-app = FastAPI(title="Agente Evaluador")
+@asynccontextmanager
+async def lifespan(_app):
+    get_engine()  # crea las tablas al arrancar, antes de atender peticiones concurrentes
+    yield
+
+
+app = FastAPI(title="Agente Evaluador", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
                    allow_methods=["*"], allow_headers=["*"])
 
