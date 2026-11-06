@@ -305,7 +305,7 @@ Sobre los otros dos ejes:
 - **Derecho a la explicación:** el panel muestra cada criterio con su puntaje, peso, lo cumplido, lo faltante y la evidencia citada. El correo de rechazo usa notas en lenguaje claro, sin el puntaje crudo, y dice que decidió una persona. La página pública "Cómo evaluamos" publica los criterios, los pesos y los derechos del titular.
 - **Protección de datos laborales:** autorización expresa sin casilla premarcada (sin ella, la API responde 422), registro de `consentimiento_at`, minimización hacia Gemini, auditoría de cada evento y purga a los 180 días que borra el PDF y la identidad y redacta el perfil.
 
-Las citas normativas marcadas **(por verificar)** en `docs/etica.md` deben revisarse contra la fuente oficial antes de la entrega.
+Las citas normativas se verificaron contra fuentes oficiales en noviembre de 2026 (sección *Fuentes* de `docs/etica.md`). Dos matices importan: la Sentencia T-323 de 2024 trata el uso de ChatGPT por un juez, no la selección de personal, así que la aplicamos por analogía; y la Circular 002 de 2024 de la SIC pide ponderar idoneidad, necesidad, razonabilidad y proporcionalidad antes de usar IA, y exige un estudio de impacto de privacidad solo cuando el riesgo es alto.
 
 ## 10. Hallazgos
 
@@ -338,7 +338,7 @@ Estos hallazgos salieron de las pruebas con Gemini real y de la revisión de có
 | **`siguiente_horario` no considera festivos colombianos.** | Una entrevista podría caer en festivo. | Calendario de festivos. |
 | **Derechos del titular atendidos a mano;** purga manual; BD y PDF sin cifrar en reposo. | Cumplimiento parcial de la Ley 1581 en un despliegue real. | *Endpoints* para conocer, rectificar y suprimir; purga programada; cifrado. |
 | **Gmail y Calendar sin prueba real** (falta el cliente OAuth). | La notificación solo está verificada con *mocks*. | Completar la prueba real (§8.4). |
-| **Citas normativas por verificar** en `docs/etica.md`. | Rigor jurídico. | Revisión contra fuentes oficiales y, en un despliegue real, una evaluación de impacto de privacidad completa. |
+| **Marco normativo verificado sin abogado.** | Las citas se confirmaron contra fuentes oficiales, pero sin asesoría jurídica. | En un despliegue real: revisión legal y estudio de impacto de privacidad, porque la selección de personal es un uso de alto riesgo. |
 | **El reclutador puede tener sus propios sesgos.** | El sistema registra y explica, pero no los elimina. | Métricas de contradicción IA–humano por grupo en la auditoría. |
 
 ## 12. Conclusiones
@@ -352,16 +352,16 @@ Estos hallazgos salieron de las pruebas con Gemini real y de la revisión de có
 
 ## Referencias
 
-**Normas y referentes** (citadas en [`docs/etica.md`](etica.md); las marcadas *por verificar* no se confirmaron contra la fuente oficial):
+**Normas y referentes** (citadas y enlazadas a la fuente oficial en [`docs/etica.md`](etica.md#fuentes)):
 
 - Constitución Política de Colombia, arts. 13 y 15.
 - Ley 1581 de 2012, por la cual se dictan disposiciones generales para la protección de datos personales.
-- Decreto 1377 de 2013, compilado en el Decreto 1074 de 2015 *(por verificar)*.
-- Superintendencia de Industria y Comercio, Circular Externa 002 de 2024, sobre el tratamiento de datos personales en sistemas de IA *(por verificar)*.
-- Corte Constitucional, Sentencia T-323 de 2024 *(por verificar)*.
-- Ley 1482 de 2011, modificada por la Ley 1752 de 2015 (antidiscriminación) *(por verificar)*.
+- Decreto 1377 de 2013, compilado en el Decreto 1074 de 2015 (cap. 2.2.2.25).
+- Superintendencia de Industria y Comercio, Circular Externa 002 del 21 de agosto de 2024, sobre el tratamiento de datos personales en sistemas de IA.
+- Corte Constitucional, Sentencia T-323 de 2024 (uso de IA por un juez; criterios de transparencia, responsabilidad y control humano).
+- Ley 1482 de 2011, modificada por la Ley 1752 de 2015 (arts. 134A y 134B del Código Penal, antidiscriminación).
 - Reglamento (UE) 2016/679 (RGPD), art. 22.
-- Reglamento (UE) de Inteligencia Artificial (AI Act), Anexo III, punto 4 (empleo como sistema de alto riesgo).
+- Reglamento (UE) 2024/1689 de Inteligencia Artificial (AI Act), Anexo III, punto 4 (empleo como sistema de alto riesgo); obligaciones aplazadas al 2 de diciembre de 2027 por el Reglamento (UE) 2026/1744.
 
 **Documentación técnica:**
 
