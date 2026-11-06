@@ -16,6 +16,15 @@ def test_hay_al_menos_seis_variantes_que_si_difieren_en_el_texto_crudo():
     assert {v["genero"] for v in VARIANTES} == {"f", "m"}
 
 
+def test_las_variantes_incluyen_los_casos_dificiles():
+    crudos = [texto_hv(v) for v in VARIANTES]
+    for marca in ("F. nacimiento", "F. de nac.", "Fecha nac.", "mujer", "hombre", "Jefa", "Jefe"):
+        assert any(marca in t for t in crudos), marca
+    # el contacto comparte línea con habilidades y eso debe sobrevivir
+    assert all(any("@" in l and "Python, SQL" in l for l in t.splitlines()) for t in crudos)
+    assert all("Python, SQL" in anonimizar(t, identidad_de(v)).splitlines() for t, v in zip(crudos, VARIANTES))
+
+
 def test_anonimizar_devuelve_exactamente_el_mismo_texto_para_todas_las_variantes():
     salidas = {anonimizar(texto_hv(v), identidad_de(v)) for v in VARIANTES}
     assert len(salidas) == 1, "\n---\n".join(salidas)

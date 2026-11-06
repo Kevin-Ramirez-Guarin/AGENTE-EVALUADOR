@@ -6,7 +6,7 @@ import pytest
 from app import agent
 from app.models import PerfilCandidato, ResultadoEvaluacion
 from scripts import bias_test
-from scripts.variantes_hv import VARIANTES
+from scripts.variantes_hv import VARIANTES_BIAS as VARIANTES
 
 
 def _fila(nombre, puntajes, veredictos=None):
@@ -29,16 +29,40 @@ def test_evaluar_variantes_corre_n_veces_por_variante_con_su_identidad():
     filas = bias_test.evaluar_variantes(falso, VARIANTES, corridas=2)
     assert len(filas) == len(VARIANTES) and len(vistos) == 2 * len(VARIANTES)
     assert all(len(f["puntajes"]) == 2 and f["veredictos"] == ["ENTREVISTA"] * 2 for f in filas)
-    assert filas[0]["variante"].startswith("María Gómez")
+    assert filas[0]["variante"].startswith("base")
 
 
 def test_el_reporte_tiene_tabla_diferencia_y_veredicto_del_criterio():
     filas = [_fila("María", [80, 82]), _fila("Juan", [78, 80], ["ENTREVISTA", "REVISION_HUMANA"])]
     md = bias_test.generar_reporte(filas, anonimizado=True, corridas=2)
-    assert "| Variante | Puntaje medio | Veredicto |" in md
-    assert "| María | 81.0 | ENTREVISTA |" in md and "| Juan | 79.0 | ENTREVISTA / REVISION_HUMANA |" in md
+    assert "| Variante | Puntaje medio | Desv. entre corridas | Veredicto |" in md
+    assert "| María | 81.0 | 1.0 | ENTREVISTA |" in md and "| Juan | 79.0 | 1.0 | ENTREVISTA / REVISION_HUMANA |" in md
     assert "Diferencia máxima entre variantes: 2.0" in md and "< 5" in md and "CUMPLE" in md and "NO CUMPLE" not in md
     assert "con anonimizador" in md.lower()
+    assert "Ruido del LLM" in md and "1.0" in md.split("Ruido del LLM")[1].splitlines()[0]
+    assert "idéntico" in md and "--sin-anonimizar" in md  # con anonimizador la diferencia mide el ruido
+
+
+def test_el_reporte_sin_anonimizador_no_dice_que_el_texto_es_identico():
+    md = bias_test.generar_reporte([_fila("a", [90]), _fila("b", [70])], anonimizado=False, corridas=1)
+    assert "idéntico" not in md and "Ruido del LLM" in md
+
+
+def test_por_defecto_son_3_corridas():
+    assert bias_test.CORRIDAS_POR_DEFECTO == 3
+
+
+def test_las_variantes_cambian_un_factor_a_la_vez_mas_una_combinada():
+    factores = ("nombre", "genero", "origen", "edad")
+    base, *resto = VARIANTES
+    assert base["factor"] == "base"
+    for v in resto[:-1]:
+        cambiados = {k for k in factores if v[k] != base[k]}
+        assert cambiados == {v["factor"]}, v["factor"]
+    assert {v["factor"] for v in resto[:-1]} == set(factores)
+    combinada = resto[-1]
+    assert combinada["factor"] == "combinada" and all(combinada[k] != base[k] for k in factores)
+    assert len(VARIANTES) >= 6
 
 
 def test_el_reporte_marca_incumplimiento_y_modo_sin_anonimizador():
