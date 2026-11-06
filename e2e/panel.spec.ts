@@ -23,6 +23,12 @@ test('el candidato aplica y el reclutador ve el ranking, el detalle y decide ENT
   await expect(page.getByLabel('Veredicto')).toBeDisabled()
   expect(mensajes).toHaveLength(1)
   expect(mensajes[0]).toContain('Se enviará un correo al candidato')
+
+  // La entrevista queda guardada: al recargar sigue la tarjeta con la fecha y el botón para unirse.
+  await page.reload()
+  const tarjeta = page.getByRole('region', { name: /entrevista agendada/i })
+  await expect(tarjeta).toContainText(/hora de colombia/i)
+  await expect(page.getByRole('link', { name: /unirse a la reunión/i })).toHaveAttribute('href', /^https:\/\/meet\.google\.com\//)
 })
 
 test('con un veredicto distinto del sugerido y sin motivo no se envía y se muestra el error', async ({ page }) => {

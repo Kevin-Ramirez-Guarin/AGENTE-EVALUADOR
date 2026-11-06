@@ -25,7 +25,8 @@ export default defineConfig({
       command: `"${python}" -m uvicorn app.main:app --port 8000`,
       cwd: backend,
       url: 'http://localhost:8000/health',
-      env: { EVALUADOR: 'falso', DATABASE_URL: `sqlite:///${db.replaceAll('\\', '/')}`, UPLOADS_DIR: uploads },
+      // NOTIFICADOR=falso: aunque exista backend/token.json, las e2e nunca envían correos ni crean eventos reales.
+      env: { EVALUADOR: 'falso', NOTIFICADOR: 'falso', DATABASE_URL: `sqlite:///${db.replaceAll('\\', '/')}`, UPLOADS_DIR: uploads },
       reuseExistingServer: false,
     },
     {

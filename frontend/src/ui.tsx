@@ -67,6 +67,7 @@ export const IconoRefrescar = (p: SVGProps<SVGSVGElement>) => <Icono {...p}><pat
 export const IconoUbicacion = (p: SVGProps<SVGSVGElement>) => <Icono {...p}><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></Icono>
 export const IconoEquipo = (p: SVGProps<SVGSVGElement>) => <Icono {...p}><circle cx="9" cy="8.5" r="3" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.8a3 3 0 0 1 0 5.4M17.5 14.2A5.5 5.5 0 0 1 20.5 19" /></Icono>
 export const IconoModalidad = (p: SVGProps<SVGSVGElement>) => <Icono {...p}><rect x="3.5" y="5" width="17" height="11" rx="1.5" /><path d="M8.5 20h7M12 16v4" /></Icono>
+export const IconoCalendario = (p: SVGProps<SVGSVGElement>) => <Icono {...p}><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4M8 14h3" /></Icono>
 export const IconoDocumento = (p: SVGProps<SVGSVGElement>) => <Icono {...p}><path d="M14 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8z" /><path d="M14 3.5V8h4.5M9 13h6M9 16.5h4" /></Icono>
 
 // Marca de Giveaway: un pin de mapa con sol, montaña y mar.

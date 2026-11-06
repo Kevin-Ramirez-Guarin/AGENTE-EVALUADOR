@@ -103,9 +103,12 @@ Panel del reclutador. Orden: primero las evaluadas (`pendiente_revision` y `deci
   },
   "veredicto_final": null,
   "estado": "pendiente_revision",
-  "error": null
+  "error": null,
+  "entrevista": null
 }
 ```
+**Cambio de contrato (aditivo):** `entrevista` es `null` hasta que se aprueba `ENTREVISTA` y Google crea el evento. Desde ese momento trae `{ "inicio": "2026-11-09T10:00:00-05:00", "meet_link": "https://meet.google.com/..." }`, el mismo objeto que devolvió `/decision`, y queda guardado aunque luego falle el correo. El panel lo muestra en la tarjeta "Entrevista agendada".
+
 `perfil` y `resultado` son `null` mientras `estado` sea `en_evaluacion` o `error_evaluacion`; `error` (texto corto o `null`) se llena solo en `error_evaluacion`. `veredicto_sugerido` / `veredicto_final`: `ENTREVISTA`, `REVISION_HUMANA` o `NO_CONTINUA`.
 
 **Cambio de contrato (aditivo):** `resultado.criterios` es una lista, vacía por defecto, con un objeto por criterio (`tecnico`, `experiencia`, `blandas`, `educacion`, `idiomas`). Cada objeto trae `puntaje` (0-100), `peso` (0-1), `cumplidos`, `faltantes`, `evidencias` y una `nota` en lenguaje claro para la persona candidata. Los campos existentes no cambian. (El ejemplo muestra solo un criterio por brevedad.)
