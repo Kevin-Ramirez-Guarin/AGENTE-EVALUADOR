@@ -1,0 +1,57 @@
+[
+  {
+    "id": "backend-jr",
+    "titulo": "Desarrollador/a Backend Jr (Python)",
+    "requisitos_obligatorios": ["Python", "SQL", "Git"],
+    "deseables": ["FastAPI/Django", "Docker", "Testing"],
+    "blandas": ["Trabajo en equipo", "Aprendizaje"],
+    "experiencia_min_anios": 1,
+    "nivel_educativo_min": "tecnologo",
+    "idiomas": [{"idioma": "inglés", "nivel": "A2"}],
+    "pesos": {"tecnico": 0.45, "experiencia": 0.25, "blandas": 0.15, "educacion": 0.10, "idiomas": 0.05}
+  },
+  {
+    "id": "frontend-react",
+    "titulo": "Desarrollador/a Frontend (React)",
+    "requisitos_obligatorios": ["JavaScript", "React", "HTML/CSS"],
+    "deseables": ["TypeScript", "Tailwind", "Accesibilidad"],
+    "blandas": ["Comunicación", "Atención al detalle"],
+    "experiencia_min_anios": 2,
+    "nivel_educativo_min": "tecnologo",
+    "idiomas": [{"idioma": "inglés", "nivel": "A2"}],
+    "pesos": {"tecnico": 0.45, "experiencia": 0.25, "blandas": 0.15, "educacion": 0.10, "idiomas": 0.05}
+  },
+  {
+    "id": "analista-datos",
+    "titulo": "Analista de Datos",
+    "requisitos_obligatorios": ["SQL", "Excel avanzado", "Estadística básica"],
+    "deseables": ["Python/pandas", "Power BI"],
+    "blandas": ["Pensamiento analítico", "Comunicación"],
+    "experiencia_min_anios": 1,
+    "nivel_educativo_min": "profesional",
+    "idiomas": [{"idioma": "inglés", "nivel": "B1"}],
+    "pesos": {"tecnico": 0.45, "experiencia": 0.25, "blandas": 0.15, "educacion": 0.10, "idiomas": 0.05}
+  },
+  {
+    "id": "qa-tester",
+    "titulo": "QA Tester",
+    "requisitos_obligatorios": ["Casos de prueba", "Reporte de bugs"],
+    "deseables": ["Automatización (Playwright/Selenium)", "API testing"],
+    "blandas": ["Rigurosidad", "Comunicación"],
+    "experiencia_min_anios": 1,
+    "nivel_educativo_min": "tecnico",
+    "idiomas": [{"idioma": "inglés", "nivel": "A2"}],
+    "pesos": {"tecnico": 0.45, "experiencia": 0.25, "blandas": 0.15, "educacion": 0.10, "idiomas": 0.05}
+  },
+  {
+    "id": "soporte-cs",
+    "titulo": "Soporte Técnico / Customer Success",
+    "requisitos_obligatorios": ["Atención al cliente", "Inglés B1"],
+    "deseables": ["Ticketing (Jira/Zendesk)", "SQL básico"],
+    "blandas": ["Empatía", "Resolución de problemas"],
+    "experiencia_min_anios": 1,
+    "nivel_educativo_min": "tecnico",
+    "idiomas": [{"idioma": "inglés", "nivel": "B1"}],
+    "pesos": {"tecnico": 0.45, "experiencia": 0.25, "blandas": 0.15, "educacion": 0.10, "idiomas": 0.05}
+  }
+]
