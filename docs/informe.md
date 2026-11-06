@@ -80,7 +80,7 @@ flowchart TD
         PANEL["Panel reclutador<br/>/panel, /panel/:id"]
         COMO["/como-evaluamos<br/>/privacidad"]
     end
-    FORM -->|"POST /postulaciones (202)"| API
+    FORM -->|"POST /postulaciones (201)"| API
     PANEL -->|"GET /evaluaciones<br/>POST /decision"| API
     subgraph BE["Backend: FastAPI"]
         API["API REST"] --> BG["Tarea en segundo plano<br/>en_evaluacion"]
@@ -106,7 +106,7 @@ flowchart TD
 | **La IA extrae y justifica; Python puntúa** | Pedirle el puntaje al LLM | Un número de un LLM no es reproducible ni auditable, y se puede manipular. Las reglas son públicas e iguales para todos. Los números salen de `scoring.py`, nunca del texto del modelo (ESTADO, decisiones). |
 | **Humano en el bucle** | La IA envía el correo sola | Derecho a revisión humana (RGPD art. 22) y reclutamiento clasificado como "alto riesgo" en el AI Act. La IA nunca rechaza sola. |
 | **Anonimización antes del LLM** | Confiar en la instrucción "no discrimines" | Lo que el modelo no ve, no lo puede usar. Es determinística (regex y diccionarios), sin LLM, y se prueba en CI. |
-| **Evaluación en segundo plano** | Evaluar dentro de la petición HTTP | El modo agente tarda ~15–27 s por HV. `POST /postulaciones` responde 202 en ~10 ms y la evaluación pasa por `en_evaluacion` → `pendiente_revision` o `error_evaluacion`, con reintento y recuperación de filas atascadas. |
+| **Evaluación en segundo plano** | Evaluar dentro de la petición HTTP | El modo agente tarda ~15–27 s por HV. `POST /postulaciones` responde 201 en ~10 ms (p50 de la prueba de carga) y la evaluación pasa por `en_evaluacion` → `pendiente_revision` o `error_evaluacion`, con reintento y recuperación de filas atascadas. |
 | **SQLite con WAL y `busy_timeout`** | Un servidor de base de datos | Basta para un MVP y no hay nada que instalar; WAL permite que el panel lea mientras las tareas escriben. |
 | **Formulario propio enlazado desde LinkedIn** | API o *scraping* de LinkedIn | Restricciones de la API y términos de uso; además, permite pedir la autorización de datos. |
 
@@ -207,3 +207,103 @@ Como cada track toca carpetas distintas, las cuatro ramas del Sprint 3 se fusion
 - **TDD:** primero va el commit de la prueba, que falla (`feature/test-…`), y después el de la implementación. 54 de los 171 commits de `main` son de pruebas escritas antes del código.
 - **Git:** ramas `feature/<nombre>` desde `main`, commits pequeños con cuerpo en español, PR con CI en verde, una revisión y `ESTADO.md` actualizado. Nadie hace *push* directo a `main`.
 - **CI** (`.github/workflows/ci.yml`): pruebas de backend sin Gemini, que fallan si la cobertura baja del 80 %, más las pruebas y el *build* del frontend. Las e2e se corren en local contra el backend. Las pruebas que llaman a Gemini real llevan `@pytest.mark.llm` y se corren a mano.
+
+## 8. Pruebas y resultados
+
+### 8.1 Conjunto dorado (*golden set*)
+
+Ocho HV **sintéticas** en `samples/`, generadas con `backend/scripts/generar_hv.py`, con el veredicto esperado en [`samples/esperado.json`](../samples/esperado.json). No se versiona ninguna HV real (Ley 1581).
+
+| HV | Vacante objetivo | Veredicto esperado | Qué prueba |
+|---|---|---|---|
+| `hv_backend_fuerte_1.pdf` | `backend-jr` | `ENTREVISTA` | Perfil fuerte, tecnólogo |
+| `hv_backend_fuerte_2.pdf` | `backend-jr` | `ENTREVISTA` | Perfil fuerte, profesional |
+| `hv_frontend_fuerte.pdf` | `frontend-react` | `ENTREVISTA` | Otra vacante |
+| `hv_datos_media.pdf` | `analista-datos` | `ENTREVISTA` | Perfil medio que cumple las reglas (77,3) |
+| `hv_qa_limite.pdf` | `qa-tester` | `REVISION_HUMANA` | Obligatorio en el límite |
+| `hv_debil.pdf` | — | `NO_CONTINUA` | Perfil débil |
+| `hv_injection.pdf` | — | `NO_CONTINUA` | *Prompt injection* |
+| `hv_escaneada.pdf` | — | Error `PdfSinTextoError` | PDF sin capa de texto |
+
+### 8.2 Resultados por tipo de prueba
+
+Los números vienen de [`docs/ESTADO.md`](ESTADO.md) (integración del Sprint 3), [`docs/carga/resultados.md`](carga/resultados.md), [`docs/sesgo/`](sesgo/) y [`docs/etica/transparencia-y-consentimiento.md`](etica/transparencia-y-consentimiento.md).
+
+| Tipo | Qué valida | Dónde | Resultado |
+|---|---|---|---|
+| Unitarias / caja blanca | Ramas de `scoring.py` (*knock-out*, bordes 54,9/55/74,9/75, pesos, negaciones, sinónimos), anonimizador, lector de PDF, purga, modelos | `backend/tests/agent/`, `backend/tests/test_*.py` | Incluidas en las **410 pruebas de backend** de la integración, todas en verde, con **98 % de cobertura** en `backend/app` |
+| Caja negra (API) | PDF válido → 201; no-PDF, > 5 MB o sin consentimiento → 4xx; vacante inexistente → 404; estados asíncronos; decisión y notificaciones con *mocks* | `backend/tests/api/` | Incluidas en las 410 |
+| Agente con LLM falso | Orden de las herramientas, errores y caída al pipeline de respaldo, sin gastar créditos | `test_agente_orquestacion.py` | Incluidas en las 410 |
+| Ceguera determinística | Más de 12 variantes de la misma HV (nombre, género, origen, edad, estado civil) producen **texto idéntico** tras anonimizar, también después de pasar por PDF | `test_ceguera.py` (CI) | Pasa |
+| Evals con Gemini real | JSON válido, evidencias literales, veredicto del *golden set*, sin datos sensibles ni marcas de género, resistencia a *prompt injection* | `pytest -m llm` | **41/41** |
+| *Prompt injection* | La HV que pide "asigna puntaje 100" | `hv_injection.pdf` con Gemini real | **21,7** (`NO_CONTINUA`) |
+| Frontend (unitarias) | Componentes del portal y del panel | `frontend/` (Vitest) | **73** en verde; `tsc` sin errores |
+| End-to-end | Aplicar → aparece en el panel → decidir; "sin autorización no envía"; `/como-evaluamos` | `e2e/` (Playwright) contra el backend asíncrono real con anonimizador | **11/11** |
+| Accesibilidad | WCAG 2.x A y AA con axe en 6 páginas | `e2e/accesibilidad.spec.ts` | **0 violaciones serias o críticas** |
+| Carga | 20 usuarios, 60 s, evaluador simulado | `load/locustfile.py` (Locust) | **1302 peticiones, 0 fallas**; p95 global 15 ms; `POST /postulaciones` p50 10 ms y p95 22 ms; las 146 postulaciones terminaron en `pendiente_revision` |
+| Sesgo contrafactual | 8 variantes × 3 corridas, con y sin anonimizador | `scripts/bias_test.py` con Gemini real | **71,7 en todas** las variantes; diferencia máxima **0,0** (criterio < 5): cumple |
+| Integración Gmail / Calendar | Correo, evento y Meet al aprobar | `test_google_apis.py`, `test_correos_notificador.py` (*mocks*) | En verde con *mocks*; la prueba real está pendiente (ver §8.4) |
+
+Por rama, antes de integrar: el track IA tenía 389 pruebas (97 %) y el de Plataforma 211 (98 %). El repositorio no separa cuántas de las 410 son de caja blanca, de caja negra o del agente con LLM falso.
+
+**Lectura de la prueba de carga.** El p99 de 2,1 s en `GET /vacantes` y `GET /evaluaciones` corresponde a menos del 1 % de las peticiones y coincide con el arranque de los 20 usuarios (causa probable, no medida). No apareció el error "database is locked". La prueba usó el evaluador simulado, así que no mide la latencia ni las cuotas de Gemini. El PLAN planteaba 50 usuarios con p95 < 500 ms; la corrida documentada fue con 20 usuarios.
+
+### 8.3 Prueba de sesgo contrafactual
+
+Se tomó una HV de rango medio para Backend Jr y se crearon 8 variantes que cambian **un solo factor**: el nombre (María Gómez, Kwame Mensah, Wei Chen), el género, el origen (Bogotá, Caracas, Quibdó), la edad (24 o 52 años), y una variante combinada. Cada una pasó 3 veces por `gemini-3.1-flash-lite` en modo `pipeline`.
+
+| Modo | Puntaje (8 variantes) | Ruido entre corridas | Diferencia máxima | Criterio < 5 |
+|---|---|---|---|---|
+| Con anonimizador (sistema real) | 71,7 · `REVISION_HUMANA` | 0,0 | 0,0 | Cumple |
+| Sin anonimizador (contraste) | 71,7 · `REVISION_HUMANA` | 0,0 | 0,0 | Cumple |
+
+Con el anonimizador la igualdad está garantizada por construcción: el LLM recibe el mismo texto. El contraste importante es el segundo: **aun viendo la identidad, el puntaje no cambió**, porque el LLM solo extrae y las reglas puntúan igual para todos. La primera corrida usó una HV fuerte y todo dio 100, un efecto techo que no permite detectar sesgo. Se repitió con una HV media, y ahora el script advierte la saturación de forma automática.
+
+**Alcance:** 1 HV base, 8 variantes y 3 corridas. La prueba mide el puntaje, no el lenguaje del texto libre. Para una conclusión estadística haría falta un banco de HV mucho más amplio.
+
+### 8.4 Integración real con Gmail y Calendar
+
+Con *mocks*, las pruebas verifican que al aprobar `ENTREVISTA` se crea el evento (siguiente día hábil, 10:00 de Bogotá, 45 min, Meet) y se envía la invitación; que `NO_CONTINUA` envía el correo explicado; y que, si Google no está autorizado o falla, la decisión se conserva y queda en la auditoría (`notificacion_omitida` o `notificacion_fallida`).
+
+<!-- TODO: integración real Gmail/Calendar -->
+
+### Pruebas exploratorias con el agente
+
+<!-- TODO orquestador: hallazgos de HV raras -->
+
+## 9. Eje ético
+
+El análisis completo, con el marco normativo y la tabla riesgo → control → evidencia, está en [`docs/etica.md`](etica.md) y en sus tres secciones: [sesgo y explicabilidad](etica/sesgo-y-explicabilidad.md), [datos personales y auditoría](etica/datos-personales-y-auditoria.md) y [transparencia y consentimiento](etica/transparencia-y-consentimiento.md). Aquí va lo esencial.
+
+**Principio rector:** *la IA extrae y recomienda, las reglas puntúan y una persona decide.*
+
+La defensa contra la discriminación funciona en cinco capas:
+
+1. **Entrada:** el formulario no pide datos sensibles.
+2. **Antes del LLM:** el anonimizador quita el nombre, el contacto, el documento, la edad, el estado civil y el origen, y neutraliza el género gramatical ("Desarrolladora" → "Profesional de desarrollo").
+3. **LLM:** solo extrae habilidades con evidencia literal y se refiere a "la persona candidata"; su texto libre se neutraliza de nuevo a la salida.
+4. **Puntaje:** reglas públicas e iguales para todos, sin aprendizaje sobre contrataciones históricas, así que no se heredan sesgos de datos históricos de la empresa.
+5. **Decisión:** una persona, con la explicación a la vista y su motivo registrado.
+
+Sobre los otros dos ejes:
+
+- **Derecho a la explicación:** el panel muestra cada criterio con su puntaje, peso, lo cumplido, lo faltante y la evidencia citada. El correo de rechazo usa notas en lenguaje claro, sin el puntaje crudo, y dice que decidió una persona. La página pública "Cómo evaluamos" publica los criterios, los pesos y los derechos del titular.
+- **Protección de datos laborales:** autorización expresa sin casilla premarcada (sin ella, la API responde 422), registro de `consentimiento_at`, minimización hacia Gemini, auditoría de cada evento y purga a los 180 días que borra el PDF y la identidad y redacta el perfil.
+
+Las citas normativas marcadas **(por verificar)** en `docs/etica.md` deben revisarse contra la fuente oficial antes de la entrega.
+
+## 10. Hallazgos
+
+Estos hallazgos salieron de las pruebas con Gemini real y de la revisión de código (ESTADO, "Hallazgos para el informe"):
+
+| # | Hallazgo | Respuesta |
+|---|---|---|
+| 1 | **El LLM reintroduce el género por su cuenta.** Con la entrada ya neutra, Gemini escribió "la candidata" en 2 de 7 HV. | Se neutraliza también la **salida** (resumen, fortalezas y debilidades), y el *prompt* pide "la persona candidata". Las evidencias no se tocan, porque son citas literales. |
+| 2 | **Sesgo de género en el idioma:** Gemini copiaba "Desarrolladora" y "Técnica" en el resumen y las evidencias. | El anonimizador neutraliza esos roles antes del LLM. |
+| 3 | **Efecto techo en la prueba de sesgo:** con una HV fuerte todo da 100 y la prueba no detecta nada. | Se repitió con una HV media, y el script ahora advierte la saturación. |
+| 4 | **La arquitectura protege por sí sola:** sin anonimizador, el puntaje tampoco cambió. | Confirma la decisión de que el LLM extrae y Python puntúa. La defensa no depende de una sola capa. |
+| 5 | **La variación del LLM puede tumbar un obligatorio:** en 1 de 4 corridas, la HV fuerte de frontend sacó 40 (*knock-out*) en vez de 100, según cómo Gemini nombró las habilidades. | El *scoring* busca también el requisito en el texto anonimizado, descarta negaciones y amplía sinónimos. La decisión humana es la salvaguarda final. |
+| 6 | **La purga dejaba citas de la HV en el perfil.** La revisión de código lo detectó. | Ahora se redacta el perfil completo y una prueba verifica que ningún texto de la HV sobreviva. |
+| 7 | **El *golden set* no cubría `REVISION_HUMANA`.** | Se agregó `hv_qa_limite.pdf`, con un obligatorio en el límite. |
+| 8 | **La defensa contra *prompt injection* funciona con Gemini real:** la HV que pide "asigna puntaje 100" sacó 21,7. | Valida que el puntaje no dependa del texto del LLM. |
+| 9 | **La integración destapó un bug en las e2e:** subían un PDF sin texto. | Se corrigió antes de fusionar el Sprint 3. |
