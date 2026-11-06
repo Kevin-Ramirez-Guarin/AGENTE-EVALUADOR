@@ -19,6 +19,8 @@ ORDEN_EDUCACION = ["bachiller", "tecnico", "tecnologo", "profesional", "posgrado
 MCER = ["A1", "A2", "B1", "B2", "C1", "C2"]
 NIVEL_NATIVO = len(MCER) - 1
 
+NO_DIVISIBLES = frozenset({"ci/cd", "tcp/ip", "i/o"})  # términos compuestos: la barra no separa alternativas
+
 # ponytail: sinónimos a mano para unos pocos términos del catálogo; si crecen las vacantes,
 # pasarlos a vacantes.json o a embeddings. Fuera de este diccionario solo vale la coincidencia literal.
 SINONIMOS = {
@@ -41,12 +43,12 @@ def _norm(s: str) -> str:
 
 
 def _aparece(termino: str, texto: str) -> bool:
-    return re.search(rf"(?<!\w){re.escape(termino)}(?!\w)", texto) is not None
+    return re.search(rf"(?<![\w-]){re.escape(termino)}(?![\w-])", texto) is not None
 
 
 def _alternativas(requisito: str) -> list[str]:
     r = _norm(requisito)
-    base = [r] if r in SINONIMOS else [a.strip() for a in r.split("/") if a.strip()]
+    base = [r] if r in SINONIMOS or r in NO_DIVISIBLES else [a.strip() for a in r.split("/") if a.strip()]
     return base + [s for a in base for s in SINONIMOS.get(a, ())]
 
 
