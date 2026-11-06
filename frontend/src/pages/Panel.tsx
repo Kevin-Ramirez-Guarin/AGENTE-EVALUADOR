@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getEvaluaciones, getVacantes, type EvaluacionResumen, type Vacante } from '../api'
+import { ESTADOS, useRefresco } from '../estados'
 
 const LIMIT = 10
 const btn = 'rounded border border-slate-300 bg-white px-3 py-1 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-indigo-700'
@@ -11,6 +12,7 @@ export function Panel() {
   const [offset, setOffset] = useState(0)
   const [filas, setFilas] = useState<EvaluacionResumen[] | null>(null)
   const [error, setError] = useState(false)
+  const [recarga, setRecarga] = useState(0)
 
   useEffect(() => {
     getVacantes().then(setVacantes, () => setVacantes([]))
@@ -26,7 +28,7 @@ export function Panel() {
     return () => {
       vigente = false
     }
-  }, [vacanteId, offset])
+  }, [vacanteId, offset, recarga])
 
   // Limpia filas y error para no mostrar datos viejos ni dejar "Siguiente" activo mientras carga.
   const ir = (vacante: string, desde: number) => {
@@ -35,6 +37,8 @@ export function Panel() {
     setVacanteId(vacante)
     setOffset(desde)
   }
+  const actualizar = useCallback(() => setRecarga((n) => n + 1), [])
+  useRefresco(!!filas?.some((f) => f.estado === 'en_evaluacion'), actualizar)
   const hayMas = (filas?.length ?? 0) > LIMIT
   const visibles = filas?.slice(0, LIMIT)
 
@@ -58,6 +62,7 @@ export function Panel() {
             <option key={v.id} value={v.id}>{v.titulo}</option>
           ))}
         </select>
+        <button type="button" className={`${btn} ml-3`} onClick={actualizar}>Actualizar</button>
       </div>
 
       {error && <p role="alert" className="mt-4 text-red-700">No pudimos cargar las evaluaciones. Intenta de nuevo más tarde.</p>}
@@ -81,10 +86,12 @@ export function Panel() {
                     <Link to={`/panel/${f.id}`} className="font-medium text-indigo-800 underline focus-visible:outline-2 focus-visible:outline-indigo-700">{f.candidato}</Link>
                   </td>
                   <td className="px-3 py-2">{titulo(f.vacante_id)}</td>
-                  <td className="px-3 py-2">{f.puntaje_total}</td>
-                  <td className="px-3 py-2">{f.veredicto_sugerido}</td>
+                  <td className="px-3 py-2">{f.puntaje_total ?? '—'}</td>
+                  <td className="px-3 py-2">{f.veredicto_sugerido ?? '—'}</td>
                   <td className="px-3 py-2">{f.veredicto_final ?? '—'}</td>
-                  <td className="px-3 py-2">{f.estado}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded px-2 py-0.5 ${ESTADOS[f.estado].clase}`}>{ESTADOS[f.estado].texto}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
