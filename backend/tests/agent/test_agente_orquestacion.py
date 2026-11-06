@@ -8,7 +8,7 @@ from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
-from app import scoring
+from app import agent, scoring
 from app.agent import PdfInvalidoError, PdfSinTextoError, evaluar_hv
 from app.models import Habilidad, PerfilCandidato, Vacante
 
@@ -41,6 +41,8 @@ class LlmFalso(GenericFakeChatModel):
     """GenericFakeChatModel no implementa bind_tools; aquí lo ignoramos y devolvemos los mensajes guiados."""
     perfil: PerfilCandidato = PERFIL
     falla: bool = False
+    perfil_falla: bool = False
+    llamadas_perfil: list = []
 
     def bind_tools(self, tools, **kwargs):
         return self
@@ -51,7 +53,13 @@ class LlmFalso(GenericFakeChatModel):
         return super()._generate(*a, **kw)
 
     def with_structured_output(self, schema, **kwargs):
-        return RunnableLambda(lambda _: self.perfil)
+        def extraer(_):
+            self.llamadas_perfil.append(1)
+            if self.perfil_falla:
+                raise RuntimeError("falló la extracción")
+            return self.perfil
+
+        return RunnableLambda(extraer)
 
 
 def _llm(nombres, **kw):
@@ -85,6 +93,41 @@ def test_si_el_agente_falla_usa_el_respaldo(caplog):
         _, res = evaluar_hv(PDF, BACKEND, VACANTES, llm=_llm([], falla=True))
     assert res == scoring.evaluar(PERFIL, BACKEND)
     assert any("respaldo" in r.message.lower() for r in caplog.records)
+
+
+def test_modo_pipeline_no_usa_el_agente(monkeypatch):
+    monkeypatch.setenv("MODO_EVALUACION", "pipeline")
+    monkeypatch.setattr(agent, "create_agent", lambda *a, **k: pytest.fail("no debe crear el agente"))
+    perfil, res = evaluar_hv(PDF, BACKEND, VACANTES, llm=_llm([]))
+    assert res == scoring.evaluar(PERFIL, BACKEND)
+
+
+def test_modo_por_defecto_es_agente(monkeypatch):
+    monkeypatch.delenv("MODO_EVALUACION", raising=False)
+    llamado = []
+    real = agent.create_agent
+    monkeypatch.setattr(agent, "create_agent", lambda *a, **k: llamado.append(1) or real(*a, **k))
+    evaluar_hv(PDF, BACKEND, VACANTES, llm=_llm(HERRAMIENTAS))
+    assert llamado
+
+
+def test_respaldo_reutiliza_el_perfil_ya_extraido():
+    llm = _llm(HERRAMIENTAS[:2])
+    _, res = evaluar_hv(PDF, BACKEND, VACANTES, llm=llm)
+    assert res == scoring.evaluar(PERFIL, BACKEND)
+    assert len(llm.llamadas_perfil) == 1  # el respaldo no vuelve a llamar a Gemini
+
+
+@pytest.mark.parametrize("nombres", [HERRAMIENTAS, []])
+def test_fallo_de_extraer_perfil_se_propaga_sin_repetir_la_llamada(nombres):
+    llm = _llm(nombres, perfil_falla=True)
+    with pytest.raises(RuntimeError, match="extracción"):
+        evaluar_hv(PDF, BACKEND, VACANTES, llm=llm)
+    assert len(llm.llamadas_perfil) == 1
+
+
+def test_prompt_del_orquestador_es_corto():
+    assert len(agent.PROMPT_AGENTE) < 600
 
 
 def test_mejor_vacante_alternativa_sale_de_la_herramienta():
