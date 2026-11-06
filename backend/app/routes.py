@@ -3,6 +3,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NoReturn
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -22,13 +23,56 @@ def get_uploads_dir() -> Path:
     return UPLOADS_DIR
 
 
-def _auditar(session: Session, evento: str, evaluacion_id: int, detalle: dict) -> None:
+def _auditar(session: Session, evento: str, evaluacion_id: int | None, detalle: dict) -> None:
     session.add(Auditoria(evento=evento, evaluacion_id=evaluacion_id,
                           detalle=json.dumps(detalle, ensure_ascii=False)))
 
 
+def _rechazar(session: Session, status: int, detail: str, vacante_id: str) -> NoReturn:
+    """Audita el rechazo (sin PDF ni datos personales) y responde con el error."""
+    _auditar(session, "postulacion_rechazada", None,
+             {"status": status, "motivo": detail, "vacante_id": vacante_id})
+    session.commit()
+    raise HTTPException(status, detail)
+
+
+def _persistir(session: Session, uploads: Path, contenido: bytes, vacante_id: str,
+               nombre: str, email: str, perfil, resultado) -> Evaluacion:
+    """Escribe el PDF y las filas; si algo falla, borra el PDF y hace rollback."""
+    uploads.mkdir(parents=True, exist_ok=True)
+    # El nombre en disco es un UUID; el nombre del cliente nunca se usa.
+    destino = uploads / f"{uuid.uuid4()}.pdf"
+    try:
+        destino.write_bytes(contenido)
+        candidato = Candidato(nombre=nombre, email=email)
+        session.add(candidato)
+        session.flush()
+        consentimiento_at = datetime.now(timezone.utc)
+        post = Postulacion(candidato_id=candidato.id, vacante_id=vacante_id,
+                           pdf_path=destino.name, consentimiento_at=consentimiento_at)
+        session.add(post)
+        session.flush()
+        ev = Evaluacion(postulacion_id=post.id, puntaje_total=resultado.puntaje_total,
+                        perfil=perfil.model_dump(mode="json"),
+                        resultado=resultado.model_dump(mode="json"),
+                        veredicto_ia=resultado.veredicto_sugerido.value)
+        session.add(ev)
+        session.flush()
+        _auditar(session, "evaluacion_creada", ev.id,
+                 {"vacante_id": vacante_id, "veredicto_sugerido": ev.veredicto_ia,
+                  "puntaje_total": ev.puntaje_total,
+                  "consentimiento_at": consentimiento_at.isoformat()})
+        session.commit()
+        return ev
+    except Exception:
+        session.rollback()
+        destino.unlink(missing_ok=True)
+        raise
+
+
+# Función síncrona: FastAPI la corre en un hilo, así el I/O y el evaluador no bloquean el event loop.
 @router.post("/postulaciones", status_code=201)
-async def crear_postulacion(
+def crear_postulacion(
     vacante_id: str = Form(),
     nombre: str = Form(),
     email: str = Form(),
@@ -42,43 +86,26 @@ async def crear_postulacion(
 
     vacante = next((v for v in _cargar_vacantes() if v.id == vacante_id), None)
     if vacante is None:
-        raise HTTPException(404, "Vacante no encontrada")
+        _rechazar(session, 404, "Vacante no encontrada", vacante_id)
     if not consentimiento:
-        raise HTTPException(422, "Se requiere el consentimiento (Ley 1581)")
+        _rechazar(session, 422, "Se requiere el consentimiento (Ley 1581)", vacante_id)
     if pdf.content_type != "application/pdf":
-        raise HTTPException(415, "Solo se aceptan archivos PDF")
-    contenido = await pdf.read(MAX_PDF_BYTES + 1)
+        _rechazar(session, 415, "Solo se aceptan archivos PDF", vacante_id)
+    contenido = pdf.file.read(MAX_PDF_BYTES + 1)
     if len(contenido) > MAX_PDF_BYTES:
-        raise HTTPException(413, "El PDF supera 5 MB")
+        _rechazar(session, 413, "El PDF supera 5 MB", vacante_id)
     if not contenido.startswith(b"%PDF"):
-        raise HTTPException(415, "El archivo no es un PDF válido")
+        _rechazar(session, 415, "El archivo no es un PDF válido", vacante_id)
 
     try:
         perfil, resultado = evaluador(contenido, vacante)
     except Exception as exc:
+        _auditar(session, "evaluacion_fallida", None,
+                 {"vacante_id": vacante_id, "error": type(exc).__name__})
+        session.commit()
         raise HTTPException(502, "No se pudo evaluar la hoja de vida") from exc
 
-    # El nombre en disco es un UUID; el nombre del cliente nunca se usa.
-    uploads.mkdir(parents=True, exist_ok=True)
-    destino = uploads / f"{uuid.uuid4()}.pdf"
-    destino.write_bytes(contenido)
-
-    candidato = Candidato(nombre=nombre, email=email)
-    session.add(candidato)
-    session.flush()
-    post = Postulacion(candidato_id=candidato.id, vacante_id=vacante_id, pdf_path=destino.name,
-                       consentimiento_at=datetime.now(timezone.utc))
-    session.add(post)
-    session.flush()
-    ev = Evaluacion(postulacion_id=post.id, puntaje_total=resultado.puntaje_total,
-                    perfil=perfil.model_dump(mode="json"), resultado=resultado.model_dump(mode="json"),
-                    veredicto_ia=resultado.veredicto_sugerido.value)
-    session.add(ev)
-    session.flush()
-    _auditar(session, "evaluacion_creada", ev.id,
-             {"vacante_id": vacante_id, "veredicto_sugerido": ev.veredicto_ia,
-              "puntaje_total": ev.puntaje_total})
-    session.commit()
+    ev = _persistir(session, uploads, contenido, vacante_id, nombre, email, perfil, resultado)
     return {"evaluacion_id": ev.id, "estado": ev.estado}
 
 
