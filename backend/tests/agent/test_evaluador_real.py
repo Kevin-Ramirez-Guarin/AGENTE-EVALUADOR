@@ -23,7 +23,7 @@ def test_get_evaluador_real_con_otro_valor(monkeypatch):
 
 def test_evaluador_real_pasa_todas_las_vacantes_al_agente(monkeypatch):
     llamadas = []
-    monkeypatch.setattr(evaluador, "evaluar_hv", lambda *a: llamadas.append(a) or "salida")
+    monkeypatch.setattr(evaluador, "evaluar_hv", lambda *a, **k: llamadas.append(a) or "salida")
     vacantes = _cargar_vacantes()
     assert evaluador.evaluador_real(b"pdf", vacantes[1]) == "salida"
     assert llamadas == [(b"pdf", vacantes[1], vacantes)]
