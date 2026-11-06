@@ -81,13 +81,26 @@ Panel del reclutador, ordenado por puntaje descendente. Query opcional: `vacante
     "veredicto_sugerido": "ENTREVISTA",
     "cumple_obligatorios": true,
     "explicacion": "Cumple los 3 requisitos obligatorios con evidencia en la HV.",
-    "mejor_vacante_alternativa": null
+    "mejor_vacante_alternativa": null,
+    "criterios": [
+      {
+        "criterio": "tecnico",
+        "puntaje": 88,
+        "peso": 0.45,
+        "cumplidos": ["Python", "SQL", "Git", "Docker"],
+        "faltantes": ["Testing"],
+        "evidencias": ["2 años desarrollando APIs en Python"],
+        "nota": "Cumple todos los requisitos imprescindibles. Reforzar testing te ayudaría a crecer en el cargo."
+      }
+    ]
   },
   "veredicto_final": null,
   "estado": "pendiente_revision"
 }
 ```
 `veredicto_sugerido` / `veredicto_final`: `ENTREVISTA`, `REVISION_HUMANA` o `NO_CONTINUA`.
+
+**Cambio de contrato (aditivo):** `resultado.criterios` es una lista, vacía por defecto, con un objeto por criterio (`tecnico`, `experiencia`, `blandas`, `educacion`, `idiomas`). Cada objeto trae `puntaje` (0-100), `peso` (0-1), `cumplidos`, `faltantes`, `evidencias` y una `nota` en lenguaje claro para la persona candidata. Los campos existentes no cambian. (El ejemplo muestra solo un criterio por brevedad.)
 
 ## POST /evaluaciones/{id}/decision  (implementada)
 Solo aquí, al aprobar, se envían el correo y el evento de Calendar.
