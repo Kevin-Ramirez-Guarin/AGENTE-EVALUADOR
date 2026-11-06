@@ -88,9 +88,9 @@ describe('Detalle', () => {
     expect(screen.getByText('Poca experiencia con Docker')).toBeInTheDocument()
     expect(screen.getByText(/2 años desarrollando APIs/)).toBeInTheDocument()
     expect(screen.getByText(/lideró dailies/i)).toBeInTheDocument()
-    expect(screen.getByText(/puntaje total: 82.5/i)).toBeInTheDocument()
+    expect(screen.getByRole('meter', { name: /puntaje total/i })).toHaveAttribute('aria-valuenow', '82.5')
     expect(screen.getByText(/cumple los obligatorios: sí/i)).toBeInTheDocument()
-    expect(screen.getByText(/la ia sugiere: ENTREVISTA/i)).toBeInTheDocument()
+    expect(screen.getByText(/la ia sugiere: entrevista/i)).toBeInTheDocument()
     expect(screen.getByText(base.resultado.explicacion)).toBeInTheDocument()
     expect(screen.getByText(/frontend-jr/)).toBeInTheDocument()
     expect(screen.getByText(/la ia recomienda; la decisión es tuya/i)).toBeInTheDocument()
@@ -135,7 +135,7 @@ describe('Detalle', () => {
 
     expect(confirmar).toHaveBeenCalledWith(expect.stringMatching(/se enviará un correo al candidato/i))
     expect(api.decidir).toHaveBeenCalledWith(12, { veredicto: 'ENTREVISTA', motivo: undefined, reclutador: 'jvarz12' })
-    expect(await screen.findByText(/decidida/i)).toBeInTheDocument()
+    expect(await screen.findByText(/estado: decidida/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /meet/i })).toHaveAttribute('href', 'https://meet.google.com/xxx-xxxx-xxx')
     expect(localStorage.getItem('reclutador')).toBe('jvarz12')
     expect(screen.getByLabelText(/veredicto/i)).toBeDisabled()
@@ -169,7 +169,7 @@ describe('Detalle', () => {
   it('si ya está decidida no muestra el formulario y sí el veredicto final', async () => {
     await setup({ ...base, estado: 'decidida', veredicto_final: 'REVISION_HUMANA' })
     expect(screen.queryByRole('button', { name: /registrar decisión/i })).not.toBeInTheDocument()
-    expect(screen.getByText(/veredicto final: REVISION_HUMANA/i)).toBeInTheDocument()
+    expect(screen.getByText(/veredicto final: revisión humana/i)).toBeInTheDocument()
   })
 
   it('rotula la nota por criterio como texto para la persona candidata', async () => {
@@ -197,7 +197,7 @@ describe('Detalle', () => {
       vi.mocked(api.getEvaluacion).mockResolvedValue(base)
       await act(() => vi.advanceTimersByTimeAsync(5000))
       expect(api.getEvaluacion).toHaveBeenCalledTimes(2)
-      expect(screen.getByText(/puntaje total: 82.5/i)).toBeInTheDocument()
+      expect(screen.getByRole('meter', { name: /puntaje total/i })).toHaveAttribute('aria-valuenow', '82.5')
       expect(screen.getByRole('button', { name: /registrar decisión/i })).toBeInTheDocument()
       await act(() => vi.advanceTimersByTimeAsync(15000))
       expect(api.getEvaluacion).toHaveBeenCalledTimes(2)
@@ -231,7 +231,7 @@ describe('Detalle', () => {
       expect(screen.queryByText(/no pudimos cargar/i)).not.toBeInTheDocument()
       vi.mocked(api.getEvaluacion).mockResolvedValue(base)
       await act(() => vi.advanceTimersByTimeAsync(5000))
-      expect(screen.getByText(/puntaje total: 82.5/i)).toBeInTheDocument()
+      expect(screen.getByRole('meter', { name: /puntaje total/i })).toHaveAttribute('aria-valuenow', '82.5')
     })
 
     it('si Reintentar responde 409 recarga el estado actual', async () => {
