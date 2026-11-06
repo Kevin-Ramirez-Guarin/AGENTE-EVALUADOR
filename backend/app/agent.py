@@ -4,6 +4,7 @@ Uso (desde backend/): python -m app.agent ruta.pdf
 """
 import argparse
 import logging
+import os
 import re
 from io import BytesIO
 
@@ -111,7 +112,11 @@ def _crear_herramientas(pdf_bytes: bytes, vacante: Vacante, vacantes: list[Vacan
         """Extrae el perfil estructurado del candidato a partir del texto ya extraído."""
         if "texto" not in contexto:
             return "Error: primero llama a extraer_texto_pdf."
-        contexto["perfil"] = extraer_perfil(contexto["texto"], llm)
+        try:
+            contexto["perfil"] = extraer_perfil(contexto["texto"], llm)
+        except Exception as e:  # noqa: BLE001 - se guarda para propagarlo sin repetir la llamada
+            contexto["error_perfil"] = e
+            return "Error: no se pudo extraer el perfil. Detente."
         return "Perfil extraído."
 
     @tool("evaluar_contra_vacante")
@@ -138,16 +143,22 @@ def _ensamblar(contexto: dict) -> tuple[PerfilCandidato, ResultadoEvaluacion]:
     return contexto["perfil"], resultado
 
 
-def _pipeline_directo(pdf_bytes, vacante, vacantes, llm):
-    perfil = extraer_perfil(extraer_texto_pdf(pdf_bytes), llm)
+def _pipeline_directo(pdf_bytes, vacante, vacantes, llm, contexto=None):
+    """extraer -> perfil -> evaluar -> comparar; reutiliza lo que el agente ya dejó en `contexto`."""
+    contexto = contexto or {}
+    perfil = contexto.get("perfil")
+    if perfil is None:
+        perfil = extraer_perfil(contexto.get("texto") or extraer_texto_pdf(pdf_bytes), llm)
     resultado = scoring.evaluar(perfil, vacante)
     alternativa = scoring.mejor_vacante(perfil, vacantes, vacante.id)
     return perfil, resultado.model_copy(update={"mejor_vacante_alternativa": alternativa})
 
 
 def evaluar_hv(pdf_bytes: bytes, vacante: Vacante, vacantes: list[Vacante], llm=None):
-    """PDF -> (perfil, evaluación). El agente orquesta; los datos devueltos salen del contexto."""
+    """PDF -> (perfil, evaluación). MODO_EVALUACION=agente (defecto) | pipeline (sin bucle del agente, más barato)."""
     llm = llm or get_llm()
+    if os.getenv("MODO_EVALUACION", "agente").strip().lower() == "pipeline":
+        return _pipeline_directo(pdf_bytes, vacante, vacantes, llm)
     contexto: dict = {}
     try:
         agente = create_agent(llm, _crear_herramientas(pdf_bytes, vacante, vacantes, contexto, llm),
@@ -156,12 +167,13 @@ def evaluar_hv(pdf_bytes: bytes, vacante: Vacante, vacantes: list[Vacante], llm=
                       config={"recursion_limit": LIMITE_PASOS_AGENTE})
     except Exception:  # noqa: BLE001 - cualquier fallo del agente se cubre con el respaldo
         logger.warning("El agente falló; se usa el pipeline directo de respaldo", exc_info=True)
-        return _pipeline_directo(pdf_bytes, vacante, vacantes, llm)
-    if "error_pdf" in contexto:
-        raise contexto["error_pdf"]
+        return _pipeline_directo(pdf_bytes, vacante, vacantes, llm, contexto)
+    for clave in ("error_pdf", "error_perfil"):
+        if clave in contexto:
+            raise contexto[clave]
     if not all(k in contexto for k in CLAVES_CONTEXTO):
         logger.warning("El agente no completó las herramientas; se usa el pipeline directo de respaldo")
-        return _pipeline_directo(pdf_bytes, vacante, vacantes, llm)
+        return _pipeline_directo(pdf_bytes, vacante, vacantes, llm, contexto)
     return _ensamblar(contexto)
 
 
