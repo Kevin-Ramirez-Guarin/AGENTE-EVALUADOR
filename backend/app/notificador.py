@@ -1,4 +1,5 @@
 """Notificador inyectable: Google real, deshabilitado (sin token) o falso (pruebas)."""
+import os
 from datetime import datetime
 
 from app import google_apis
@@ -36,4 +37,10 @@ class NotificadorFalso:
 
 
 def get_notificador():
-    return NotificadorGoogle() if google_apis.TOKEN_PATH.exists() else NotificadorDeshabilitado()
+    """NOTIFICADOR=falso|deshabilitado manda sobre el token: e2e y ensayos nunca envían correos reales."""
+    modo = os.getenv("NOTIFICADOR", "").strip().lower()
+    if modo == "falso":
+        return NotificadorFalso()
+    if modo == "deshabilitado" or not google_apis.TOKEN_PATH.exists():
+        return NotificadorDeshabilitado()
+    return NotificadorGoogle()

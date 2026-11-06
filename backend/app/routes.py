@@ -184,7 +184,9 @@ def obtener_evaluacion(evaluacion_id: int, session: Session = Depends(get_sessio
     cand = session.get(Candidato, post.candidato_id)
     return {"id": ev.id, "vacante_id": post.vacante_id, "candidato": cand.nombre,
             "perfil": ev.perfil, "resultado": ev.resultado,
-            "veredicto_final": ev.veredicto_final, "estado": ev.estado, "error": ev.error}
+            "veredicto_final": ev.veredicto_final, "estado": ev.estado, "error": ev.error,
+            "entrevista": ({"inicio": ev.entrevista_inicio, "meet_link": ev.entrevista_link}
+                           if ev.entrevista_link else None)}
 
 
 @router.post("/evaluaciones/{evaluacion_id}/reintentar", status_code=202)
@@ -284,6 +286,10 @@ def _notificar(session: Session, notificador, ev: Evaluacion, veredicto: Veredic
             paso = "meet"
             if not entrevista.get("meet_link"):
                 raise ValueError("El evento no trae enlace de Meet")
+            # Se guarda ya: el evento existe aunque luego falle el correo.
+            session.connection().execute(update(Evaluacion).where(Evaluacion.id == ev.id).values(
+                entrevista_inicio=entrevista["inicio"], entrevista_link=entrevista["meet_link"]))
+            session.commit()
             asunto, cuerpo = correo_invitacion(
                 cand.nombre, vacante, entrevista["inicio"], entrevista["meet_link"])
         else:
