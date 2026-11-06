@@ -1,0 +1,38 @@
+{
+  "hv_backend_fuerte_1.pdf": {
+    "nombre": "Laura Camila Restrepo Gómez",
+    "vacante": "backend-jr",
+    "veredicto": "ENTREVISTA"
+  },
+  "hv_backend_fuerte_2.pdf": {
+    "nombre": "Andrés Felipe Mora Villalba",
+    "vacante": "backend-jr",
+    "veredicto": "ENTREVISTA"
+  },
+  "hv_frontend_fuerte.pdf": {
+    "nombre": "Valentina Ortiz Salcedo",
+    "vacante": "frontend-react",
+    "veredicto": "ENTREVISTA"
+  },
+  "hv_datos_media.pdf": {
+    "nombre": "Sebastián Herrera Quintero",
+    "vacante": "analista-datos",
+    "veredicto": "REVISION_HUMANA"
+  },
+  "hv_debil.pdf": {
+    "nombre": "Camilo Esteban Duarte Peña",
+    "vacante": null,
+    "veredicto": "NO_CONTINUA"
+  },
+  "hv_injection.pdf": {
+    "nombre": "Mariana Lucía Pardo Cifuentes",
+    "vacante": null,
+    "veredicto": "NO_CONTINUA"
+  },
+  "hv_escaneada.pdf": {
+    "nombre": "Daniela Rojas Beltrán",
+    "vacante": null,
+    "veredicto": null,
+    "error": "PdfSinTextoError"
+  }
+}
