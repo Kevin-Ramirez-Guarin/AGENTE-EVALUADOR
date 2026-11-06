@@ -77,11 +77,29 @@ def test_perfil_sin_datos_de_identidad(perfiles, archivo):
 @pytest.mark.parametrize("archivo", CON_TEXTO)
 def test_perfil_sin_palabras_de_genero_ni_el_nombre(perfiles, archivo):
     _, perfil = perfiles(archivo)
+    assert contiene_genero(_texto_libre(perfil)) == [], "Gemini reintrodujo marcas de género"
     volcado = perfil.model_dump_json()
-    assert contiene_genero(volcado) == [], "Gemini reintrodujo marcas de género"
     for palabra in GOLDEN[archivo]["nombre"].split():
         if len(palabra) >= LONGITUD_MIN_PALABRA_NOMBRE:
-            assert not re.search(rf"{re.escape(palabra)}", volcado, re.I), palabra
+            assert not re.search(r"\b" + re.escape(palabra) + r"\b", volcado, re.I), palabra
+
+
+def _texto_libre(perfil: PerfilCandidato) -> str:
+    """Solo campos de texto libre: los valores de enums (nivel_educativo, nivel) no son marcas de género."""
+    habilidades = [*perfil.habilidades_tecnicas, *perfil.habilidades_blandas]
+    return "\n".join([perfil.resumen, *perfil.fortalezas, *perfil.debilidades,
+                      *(f"{h.nombre}\n{h.evidencia}" for h in habilidades)])
+
+
+def test_el_texto_libre_ignora_los_enums_y_no_marca_adjetivos_de_experiencia():
+    perfil = PerfilCandidato(
+        habilidades_tecnicas=[{"nombre": "Docker", "nivel": "intermedio", "evidencia": "despliegue con Docker"}],
+        habilidades_blandas=[], anios_experiencia=1, nivel_educativo="tecnologo", idiomas=[],
+        fortalezas=["Posee experiencia técnica en despliegue con Docker"], debilidades=[], resumen="Perfil con base sólida.")
+    assert "tecnologo" in perfil.model_dump_json()  # el enum sí está en el volcado completo
+    assert contiene_genero(_texto_libre(perfil)) == []
+    marcado = perfil.model_copy(update={"resumen": "Es técnica en sistemas"})
+    assert contiene_genero(_texto_libre(marcado)) != []
 
 
 def test_detector_de_identidad_ignora_particulas_y_encuentra_datos():
