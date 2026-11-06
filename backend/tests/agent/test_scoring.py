@@ -210,6 +210,17 @@ def test_mejor_vacante_con_actual_desconocida_y_elige_la_mas_alta():
     assert mejor_vacante(p, [V_OTRA, mejor], "no-existe") == "mejor"
 
 
+def test_hv_backend_fuerte_2_sin_la_palabra_python_cumple_por_sus_frameworks():
+    """Regresión: la HV solo dice 'Django y FastAPI'; esos frameworks son Python (evals con Gemini real)."""
+    p = perfil([hab("Django", "Servicios con Django y FastAPI"), hab("FastAPI", "Servicios con Django y FastAPI"),
+                hab("SQL", "modelado de bases de datos con SQL (PostgreSQL)"),
+                hab("Git", "Git y GitHub Actions"), hab("Docker", "contenedores Docker")],
+               blandas=["Trabajo en equipo", "Aprendizaje rápido"], anios=2, edu="profesional",
+               idiomas=[("Inglés", "B1")])
+    res = evaluar(p, VACANTES[0])
+    assert res.cumple_obligatorios and res.veredicto_sugerido == Veredicto.ENTREVISTA
+
+
 def test_vacantes_reales_backend_fuerte():
     p = perfil(["Python", "SQL", "Git", "Docker", "Django", "pytest testing"], blandas=["Trabajo en equipo"],
                anios=3, edu="tecnologo", idiomas=[("inglés", "B1")])
