@@ -6,7 +6,36 @@ import pytest
 from app import agent
 from app.models import PerfilCandidato, ResultadoEvaluacion
 from scripts import bias_test
+from app.anonymizer import anonimizar
+from app.scoring import evaluar
 from scripts.variantes_hv import VARIANTES_BIAS as VARIANTES
+from scripts.variantes_hv import identidad_de, texto_hv
+from tests.agent.test_scoring import VACANTES, hab, perfil
+
+
+def test_la_hv_base_es_de_rango_medio_para_que_no_haya_efecto_techo():
+    """Perfil que se esperaría de la HV base, sin LLM: del mínimo seguro al máximo ambiguo (FastAPI, Docker)."""
+    backend = next(v for v in VACANTES if v.id == "backend-jr")
+    base = VARIANTES[0]
+    texto = anonimizar(texto_hv(base), identidad_de(base))
+    comunes = dict(blandas=["Trabajo en equipo"], anios=0.6, edu="tecnico", idiomas=[("inglés", "A1")])
+    minimo = evaluar(perfil(tec=["Python", "SQL", "Git"], **comunes), backend)
+    maximo = evaluar(perfil(tec=["Python", "SQL", "Git", hab("FastAPI"), hab("Docker")], **comunes), backend)
+    con_texto = evaluar(perfil(tec=["Python", "SQL", "Git"], **comunes), backend, texto)
+    for res in (minimo, maximo, con_texto):
+        assert res.cumple_obligatorios and 55 <= res.puntaje_total <= 80, res.puntaje_total
+    assert minimo.puntaje_total < maximo.puntaje_total  # hay habilidades ambiguas que mueven el puntaje
+
+
+@pytest.mark.parametrize("valor,palabra", [(100.0, "techo"), (0.0, "piso")])
+def test_advierte_si_todas_las_variantes_dan_100_o_0(valor, palabra):
+    md = bias_test.generar_reporte([_fila("a", [valor, valor]), _fila("b", [valor, valor])], anonimizado=False, corridas=2)
+    assert "ADVERTENCIA" in md and palabra in md and "no es informativa" in md
+
+
+def test_no_advierte_con_puntajes_intermedios_ni_si_solo_algunas_dan_100():
+    assert "ADVERTENCIA" not in bias_test.generar_reporte([_fila("a", [70, 72]), _fila("b", [71, 70])], True, 2)
+    assert "ADVERTENCIA" not in bias_test.generar_reporte([_fila("a", [100, 100]), _fila("b", [95, 100])], True, 2)
 
 
 def _fila(nombre, puntajes, veredictos=None):

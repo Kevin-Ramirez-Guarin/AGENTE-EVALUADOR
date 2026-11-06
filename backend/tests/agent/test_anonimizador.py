@@ -203,6 +203,21 @@ def test_contiene_genero_detecta_y_lo_anonimizado_queda_limpio():
     assert contiene_genero("") == []
 
 
+@pytest.mark.parametrize("neutra", [
+    "Formación técnica en Sistemas", "formación  técnica en sistemas", "Formación\ntécnica en sistemas",
+    "Formación técnica profesional en redes", "Profesional técnico de soporte",
+    "Profesional en ingeniería de sistemas", "Título de tecnología en ADSO",
+])
+def test_contiene_genero_ignora_las_formas_neutras_que_produce_el_anonimizador(neutra):
+    assert contiene_genero(neutra) == []
+    assert contiene_genero(anonimizar(neutra)) == []
+
+
+def test_contiene_genero_si_cuenta_la_palabra_fuera_de_la_forma_neutra():
+    assert contiene_genero("Técnica en sistemas") != []
+    assert contiene_genero("Formación técnica en redes y técnica en sistemas") == ["tecnica en"]
+
+
 def test_es_deterministico_e_idempotente():
     texto = "Ingeniera de sistemas. Edad: 25. laura@example.com"
     una = anonimizar(texto, ID)

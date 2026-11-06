@@ -41,8 +41,8 @@ def test_lo_anonimizado_no_filtra_identidad_ni_genero_y_conserva_lo_evaluable(va
     assert contiene_genero(out) == []
     for dato in (*variante["nombre"].split(), variante["origen"], variante["email"], variante["tel"], str(variante["edad"])):
         assert dato.lower() not in out
-    for evaluable in ("Python", "SQL", "Git", "FastAPI", "Docker", "3 años de experiencia", "Inglés B1",
-                      "profesional en ingeniería de sistemas"):
+    for evaluable in ("Python", "SQL", "Git", "FastAPI", "Docker", "7 meses de experiencia", "Inglés A1",
+                      "formación técnica en sistemas"):
         assert evaluable.lower() in out
 
 
