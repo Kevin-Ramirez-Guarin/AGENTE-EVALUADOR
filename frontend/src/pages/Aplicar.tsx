@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { enviarPostulacion, getVacante, type Vacante } from '../api'
+import { ApiError, enviarPostulacion, getVacante, type Vacante } from '../api'
 
 const MAX_BYTES = 5 * 1024 * 1024
 const input =
@@ -9,12 +9,24 @@ const input =
 type Errores = Partial<Record<'nombre' | 'email' | 'pdf' | 'consentimiento', string>>
 type Estado = 'editando' | 'enviando' | 'exito' | 'error'
 
+const CAMPOS = ['nombre', 'email', 'pdf', 'consentimiento'] as const
+
+const MENSAJES_API: Record<number, string> = {
+  413: 'El archivo supera los 5 MB permitidos.',
+  415: 'El archivo no es un PDF válido.',
+  422: 'Revisa tus datos y la autorización de tratamiento de datos.',
+  404: 'Esta vacante ya no existe.',
+}
+
+const mensajeDe = (err: unknown) =>
+  (err instanceof ApiError && MENSAJES_API[err.status]) || 'No pudimos enviar tu postulación. Intenta de nuevo.'
+
 function validar(nombre: string, email: string, pdf: File | null, consentimiento: boolean): Errores {
   const e: Errores = {}
   if (!nombre.trim()) e.nombre = 'Escribe tu nombre.'
   if (!/^\S+@\S+\.\S+$/.test(email)) e.email = 'Escribe un correo válido.'
   if (!pdf) e.pdf = 'Adjunta tu hoja de vida en PDF.'
-  else if (!pdf.name.toLowerCase().endsWith('.pdf')) e.pdf = 'Solo se aceptan archivos PDF.'
+  else if (!pdf.name.toLowerCase().endsWith('.pdf') || pdf.type !== 'application/pdf') e.pdf = 'Solo se aceptan archivos PDF.'
   else if (pdf.size > MAX_BYTES) e.pdf = 'El archivo supera los 5 MB permitidos.'
   if (!consentimiento) e.consentimiento = 'Debes dar tu autorización para poder postularte.'
   return e
@@ -40,21 +52,36 @@ export function Aplicar() {
   const [consentimiento, setConsentimiento] = useState(false)
   const [errores, setErrores] = useState<Errores>({})
   const [estado, setEstado] = useState<Estado>('editando')
+  const [mensajeError, setMensajeError] = useState('')
 
   useEffect(() => {
-    getVacante(id).then(setVacante, () => setFallo(true))
+    let cancelled = false
+    setFallo(false)
+    setVacante(null)
+    getVacante(id).then(
+      (v) => !cancelled && setVacante(v),
+      () => !cancelled && setFallo(true),
+    )
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   async function onSubmit(ev: FormEvent) {
     ev.preventDefault()
     const errs = validar(nombre, email, pdf, consentimiento)
     setErrores(errs)
-    if (Object.keys(errs).length > 0 || !pdf) return
+    const primero = CAMPOS.find((c) => errs[c])
+    if (primero || !pdf) {
+      if (primero) document.getElementById(primero)?.focus()
+      return
+    }
     setEstado('enviando')
     try {
       await enviarPostulacion({ vacante_id: id, nombre: nombre.trim(), email: email.trim(), pdf, consentimiento })
       setEstado('exito')
-    } catch {
+    } catch (err) {
+      setMensajeError(mensajeDe(err))
       setEstado('error')
     }
   }
@@ -106,7 +133,7 @@ export function Aplicar() {
         </p>
         {errores.consentimiento && <p id="consentimiento-error" className="mt-1 text-sm text-red-700">{errores.consentimiento}</p>}
       </div>
-      {estado === 'error' && <p role="alert" className="text-red-700">No pudimos enviar tu postulación. Revisa los datos e intenta de nuevo.</p>}
+      {estado === 'error' && <p role="alert" className="text-red-700">{mensajeError}</p>}
       <button
         type="submit"
         disabled={estado === 'enviando'}
