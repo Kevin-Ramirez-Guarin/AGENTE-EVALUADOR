@@ -1,10 +1,17 @@
 """Contratos de datos (PLAN.md §4 y §6). Cambian solo con PR revisado por los tres."""
 from enum import Enum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+Puntaje = Annotated[float, Field(ge=0, le=100)]
+Peso = Annotated[float, Field(ge=0, le=1)]
 NivelEducativo = Literal["bachiller", "tecnico", "tecnologo", "profesional", "posgrado"]
+
+
+class Idioma(BaseModel):
+    idioma: str
+    nivel: str
 
 
 class Habilidad(BaseModel):
@@ -18,18 +25,18 @@ class PerfilCandidato(BaseModel):
     habilidades_blandas: list[Habilidad]
     anios_experiencia: float
     nivel_educativo: NivelEducativo
-    idiomas: list[dict]  # {idioma, nivel}
+    idiomas: list[Idioma]
     fortalezas: list[str] = Field(max_length=3)
     debilidades: list[str] = Field(max_length=3)  # áreas de mejora, redacción respetuosa
     resumen: str
 
 
 class Pesos(BaseModel):
-    tecnico: float
-    experiencia: float
-    blandas: float
-    educacion: float
-    idiomas: float
+    tecnico: Peso
+    experiencia: Peso
+    blandas: Peso
+    educacion: Peso
+    idiomas: Peso
 
     @model_validator(mode="after")
     def _suman_uno(self):
@@ -47,7 +54,7 @@ class Vacante(BaseModel):
     blandas: list[str]
     experiencia_min_anios: float
     nivel_educativo_min: NivelEducativo
-    idiomas: list[dict]  # {idioma, nivel}
+    idiomas: list[Idioma]
     pesos: Pesos
 
 
@@ -58,8 +65,8 @@ class Veredicto(str, Enum):
 
 
 class ResultadoEvaluacion(BaseModel):
-    puntaje_total: float
-    puntajes_por_criterio: dict[str, float]
+    puntaje_total: Puntaje
+    puntajes_por_criterio: dict[str, Puntaje]
     veredicto_sugerido: Veredicto
     cumple_obligatorios: bool
     explicacion: str
