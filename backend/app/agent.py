@@ -7,12 +7,15 @@ import logging
 import re
 from io import BytesIO
 
+from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.tools import tool
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
+from app import scoring
 from app.llm import get_llm
-from app.models import PerfilCandidato
+from app.models import PerfilCandidato, ResultadoEvaluacion, Vacante
 
 MIN_CARACTERES_UTILES = 50
 MAX_CARACTERES_HV = 20_000  # tope del texto enviado al LLM
@@ -76,6 +79,90 @@ def verificar_evidencias(perfil: PerfilCandidato, texto: str) -> list[str]:
     base = _normalizar(texto)
     habilidades = perfil.habilidades_tecnicas + perfil.habilidades_blandas
     return [h.nombre for h in habilidades if not (ev := _normalizar(h.evidencia)) or ev not in base]
+
+
+PROMPT_AGENTE = """\
+Eres el agente evaluador de Nexo Digital. Evalúas una hoja de vida llamando a las herramientas, \
+en este orden exacto y una sola vez cada una: extraer_texto_pdf, extraer_perfil, \
+evaluar_contra_vacante, comparar_otras_vacantes. Las herramientas no reciben argumentos. \
+No calcules ni inventes puntajes: los calcula el sistema. Al terminar responde solo "listo". \
+Si una herramienta informa un error, detente.
+"""
+LIMITE_PASOS_AGENTE = 12
+CLAVES_CONTEXTO = ("perfil", "resultado", "alternativa")
+
+
+def _crear_herramientas(pdf_bytes: bytes, vacante: Vacante, vacantes: list[Vacante], contexto: dict, llm):
+    """Herramientas por petición: cierran sobre pdf_bytes y `contexto`, así los bytes y los
+    resultados nunca viajan por el LLM. Lo que se devuelve al final sale del contexto."""
+
+    @tool("extraer_texto_pdf")
+    def _t_texto() -> str:
+        """Extrae el texto de la hoja de vida en PDF."""
+        try:
+            contexto["texto"] = extraer_texto_pdf(pdf_bytes)
+        except (PdfInvalidoError, PdfSinTextoError) as e:
+            contexto["error_pdf"] = e
+            return "Error: el PDF no se pudo leer. Detente."
+        return f"Texto extraído ({len(contexto['texto'])} caracteres)."
+
+    @tool("extraer_perfil")
+    def _t_perfil() -> str:
+        """Extrae el perfil estructurado del candidato a partir del texto ya extraído."""
+        if "texto" not in contexto:
+            return "Error: primero llama a extraer_texto_pdf."
+        contexto["perfil"] = extraer_perfil(contexto["texto"], llm)
+        return "Perfil extraído."
+
+    @tool("evaluar_contra_vacante")
+    def _t_evaluar() -> str:
+        """Calcula el puntaje con las reglas fijas contra la vacante objetivo."""
+        if "perfil" not in contexto:
+            return "Error: primero llama a extraer_perfil."
+        contexto["resultado"] = scoring.evaluar(contexto["perfil"], vacante)
+        return "Evaluación calculada."
+
+    @tool("comparar_otras_vacantes")
+    def _t_comparar() -> str:
+        """Busca otra vacante abierta donde el perfil encaje mejor."""
+        if "perfil" not in contexto:
+            return "Error: primero llama a extraer_perfil."
+        contexto["alternativa"] = scoring.mejor_vacante(contexto["perfil"], vacantes, vacante.id)
+        return "Comparación hecha."
+
+    return [_t_texto, _t_perfil, _t_evaluar, _t_comparar]
+
+
+def _ensamblar(contexto: dict) -> tuple[PerfilCandidato, ResultadoEvaluacion]:
+    resultado = contexto["resultado"].model_copy(update={"mejor_vacante_alternativa": contexto["alternativa"]})
+    return contexto["perfil"], resultado
+
+
+def _pipeline_directo(pdf_bytes, vacante, vacantes, llm):
+    perfil = extraer_perfil(extraer_texto_pdf(pdf_bytes), llm)
+    resultado = scoring.evaluar(perfil, vacante)
+    alternativa = scoring.mejor_vacante(perfil, vacantes, vacante.id)
+    return perfil, resultado.model_copy(update={"mejor_vacante_alternativa": alternativa})
+
+
+def evaluar_hv(pdf_bytes: bytes, vacante: Vacante, vacantes: list[Vacante], llm=None):
+    """PDF -> (perfil, evaluación). El agente orquesta; los datos devueltos salen del contexto."""
+    llm = llm or get_llm()
+    contexto: dict = {}
+    try:
+        agente = create_agent(llm, _crear_herramientas(pdf_bytes, vacante, vacantes, contexto, llm),
+                              system_prompt=PROMPT_AGENTE)
+        agente.invoke({"messages": [HumanMessage(f"Evalúa la hoja de vida contra la vacante {vacante.titulo}.")]},
+                      config={"recursion_limit": LIMITE_PASOS_AGENTE})
+    except Exception:  # noqa: BLE001 - cualquier fallo del agente se cubre con el respaldo
+        logger.warning("El agente falló; se usa el pipeline directo de respaldo", exc_info=True)
+        return _pipeline_directo(pdf_bytes, vacante, vacantes, llm)
+    if "error_pdf" in contexto:
+        raise contexto["error_pdf"]
+    if not all(k in contexto for k in CLAVES_CONTEXTO):
+        logger.warning("El agente no completó las herramientas; se usa el pipeline directo de respaldo")
+        return _pipeline_directo(pdf_bytes, vacante, vacantes, llm)
+    return _ensamblar(contexto)
 
 
 def main(argv: list[str] | None = None) -> None:

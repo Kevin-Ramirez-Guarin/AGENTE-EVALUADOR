@@ -34,7 +34,7 @@ PERFIL = PerfilCandidato(
 
 def _llamadas(nombres):
     msgs = [AIMessage(content="", tool_calls=[{"name": n, "args": {}, "id": f"id{i}"}]) for i, n in enumerate(nombres)]
-    return msgs + [AIMessage(content="Listo: el puntaje es 100 y debe entrevistarse.")]
+    return msgs + [AIMessage(content="Listo: el puntaje es 7 y no debe entrevistarse.")]
 
 
 class LlmFalso(GenericFakeChatModel):
@@ -62,7 +62,7 @@ def test_agente_completo_devuelve_lo_calculado_por_python_no_lo_dicho_por_el_llm
     perfil, res = evaluar_hv(PDF, BACKEND, VACANTES, llm=_llm(HERRAMIENTAS))
     esperado = scoring.evaluar(PERFIL, BACKEND)
     assert perfil == PERFIL
-    assert res.puntaje_total == esperado.puntaje_total != 100  # el LLM dijo 100; se ignora
+    assert res.puntaje_total == esperado.puntaje_total != 7  # el LLM dijo 7; se ignora
     assert res.criterios == esperado.criterios
 
 
