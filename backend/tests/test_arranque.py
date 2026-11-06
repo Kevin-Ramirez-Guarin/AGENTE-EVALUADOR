@@ -10,7 +10,7 @@ import dotenv
 llamadas = []
 dotenv.load_dotenv = lambda *a, **k: llamadas.append(a or k) or True
 import app.main
-print(len(llamadas), llamadas[0] if llamadas else None)
+print(len(llamadas), str(llamadas[0][0]) if llamadas else None)
 """
 
 
@@ -18,4 +18,4 @@ def test_main_carga_el_env_del_backend_al_arrancar():
     salida = subprocess.run([sys.executable, "-c", CODIGO], cwd=BACKEND, capture_output=True, text=True, check=True)
     n, args = salida.stdout.strip().split(" ", 1)
     assert int(n) >= 1, "app.main no llamó a load_dotenv: EVALUADOR/MODO_EVALUACION del .env se ignoran"
-    assert str(BACKEND / ".env") in args
+    assert Path(args) == BACKEND / ".env"

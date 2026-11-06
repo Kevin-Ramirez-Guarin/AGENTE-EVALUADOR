@@ -2,7 +2,12 @@ import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from dotenv import load_dotenv
+
+# Antes de importar el resto: EVALUADOR, MODO_EVALUACION y UPLOADS_DIR se leen del .env (sin pisar el entorno).
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+from fastapi import FastAPI, HTTPException, Request  # noqa: E402
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
