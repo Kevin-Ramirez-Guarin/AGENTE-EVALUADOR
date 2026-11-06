@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import NoReturn
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlmodel import Session, select
 
@@ -17,6 +17,7 @@ from app.models import Veredicto
 router = APIRouter()
 
 MAX_PDF_BYTES = 5 * 1024 * 1024
+EMAIL_RE = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"  # patrón simple; evita sumar email-validator
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 
 
@@ -75,8 +76,8 @@ def _persistir(session: Session, uploads: Path, contenido: bytes, vacante_id: st
 @router.post("/postulaciones", status_code=201)
 def crear_postulacion(
     vacante_id: str = Form(),
-    nombre: str = Form(),
-    email: str = Form(),
+    nombre: str = Form(min_length=1, max_length=200),
+    email: str = Form(max_length=254, pattern=EMAIL_RE),
     consentimiento: bool = Form(),
     pdf: UploadFile = File(),
     session: Session = Depends(get_session),
@@ -144,8 +145,8 @@ def obtener_evaluacion(evaluacion_id: int, session: Session = Depends(get_sessio
 
 class DecisionIn(BaseModel):
     veredicto: Veredicto
-    motivo: str | None = None
-    reclutador: str
+    motivo: str | None = Field(default=None, min_length=1, max_length=1000)
+    reclutador: str = Field(min_length=1, max_length=100)
 
 
 @router.post("/evaluaciones/{evaluacion_id}/decision")
