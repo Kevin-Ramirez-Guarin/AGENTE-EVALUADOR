@@ -68,6 +68,13 @@ _ART = r"(?:\b(?:un|una|el|la)\s+)?"
 _F = r"(?:/ora|/a|a)?"  # desarrollador / desarrolladora / desarrollador/a / desarrollador/ora
 
 
+# "experiencia técnica en Docker": tras estos sustantivos "técnica" es adjetivo, no el rol de la persona (y la forma
+# neutra "formación técnica en" tampoco debe volver a reemplazarse).
+_NO_ADJETIVO = "".join(rf"(?<!{n} )" for n in (
+    "formacion", "experiencia", "habilidad", "capacidad", "base", "perfil", "conocimiento", "competencia", "aptitud",
+    "destreza", "solucion", "asistencia", "gestion", "documentacion"))
+
+
 def _rol(raiz: str) -> str:
     return rf"{_ART}{raiz}{_F}\b"
 
@@ -77,9 +84,9 @@ def _rol(raiz: str) -> str:
 GENERO = [(_c(p), r) for p, r in [
     (rf"{_ART}ingenier[oa](?:/a)?\s+(de|en)\b", r"profesional en ingeniería \1"),
     (rf"{_ART}ingenier[oa](?:/a)?\b", "profesional de ingeniería"),
-    (rf"{_ART}tecnolog[oa](?:/a)?\b", "título de tecnología"),
-    (rf"{_ART}(?<!formacion )tecnic[oa](?:/a)?\s+profesional\b", "formación técnica profesional"),
-    (rf"{_ART}(?<!formacion )tecnic[oa](?:/a)?\s+en\b", "formación técnica en"),
+    (rf"{_ART}{_NO_ADJETIVO}tecnolog[oa](?:/a)?\b", "título de tecnología"),
+    (rf"{_ART}{_NO_ADJETIVO}tecnic[oa](?:/a)?\s+profesional\b", "formación técnica profesional"),
+    (rf"{_ART}{_NO_ADJETIVO}tecnic[oa](?:/a)?\s+en\b", "formación técnica en"),
     (r"\b(?:un|una|el|la)\s+tecnic[oa](?:/a)?\b", "profesional técnico"),  # sin artículo: "soporte técnico" no es persona
     (_rol("desarrollador"), "profesional de desarrollo"),
     (_rol("programador"), "profesional de programación"),
