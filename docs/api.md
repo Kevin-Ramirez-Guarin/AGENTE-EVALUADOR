@@ -102,4 +102,4 @@ Cuerpo:
 ```json
 { "id": 12, "veredicto_final": "ENTREVISTA", "estado": "decidida", "entrevista": { "inicio": "2026-11-09T10:00:00-05:00", "meet_link": "https://meet.google.com/xxx-xxxx-xxx" } }
 ```
-`entrevista` es `null` si el veredicto no es `ENTREVISTA`; en este sprint siempre es `null` (aún no se envía correo ni se agenda). `motivo` máx. 1000 caracteres y `reclutador` 1-100 (lo declara el cliente; sin autenticación por ahora). Errores: 404 evaluación inexistente; 422 falta motivo; 409 ya decidida.
+Los correos y el evento salen después de guardar la decisión: `ENTREVISTA` agenda (siguiente día hábil 10:00, 45 min, Meet) y envía invitación; `NO_CONTINUA` envía un correo con explicación breve por criterio; `REVISION_HUMANA` no envía nada. `entrevista` es `null` si el veredicto no es `ENTREVISTA`, si Google no está autorizado (auditoría `notificacion_omitida`) o si falla (la decisión se mantiene; auditoría `notificacion_fallida`). `motivo` máx. 1000 caracteres y `reclutador` 1-100 (lo declara el cliente; sin autenticación por ahora). Errores: 404 evaluación inexistente; 422 falta motivo; 409 ya decidida.

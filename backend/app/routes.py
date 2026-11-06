@@ -11,9 +11,12 @@ from sqlalchemy import update
 from sqlmodel import Session, select
 
 from app.agent import PdfInvalidoError, PdfSinTextoError
+from app.correos import correo_invitacion, correo_no_continua
 from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_session
 from app.evaluador import Evaluador, get_evaluador
+from app.google_apis import siguiente_horario
 from app.models import Veredicto
+from app.notificador import get_notificador
 
 router = APIRouter()
 
@@ -159,7 +162,8 @@ class DecisionIn(BaseModel):
 
 
 @router.post("/evaluaciones/{evaluacion_id}/decision")
-def decidir(evaluacion_id: int, body: DecisionIn, session: Session = Depends(get_session)):
+def decidir(evaluacion_id: int, body: DecisionIn, session: Session = Depends(get_session),
+            notificador=Depends(get_notificador)):
     ev = session.get(Evaluacion, evaluacion_id)
     if ev is None:
         raise HTTPException(404, "Evaluación no encontrada")
@@ -180,6 +184,50 @@ def decidir(evaluacion_id: int, body: DecisionIn, session: Session = Depends(get
              {"veredicto_ia": ev.veredicto_ia, "veredicto_final": body.veredicto.value,
               "motivo": body.motivo, "reclutador": body.reclutador})
     session.commit()
-    # Sprint actual: no se envían correos ni se agenda; `entrevista` queda en null.
+    entrevista = _notificar(session, notificador, ev, body.veredicto)
     return {"id": evaluacion_id, "veredicto_final": body.veredicto.value, "estado": "decidida",
-            "entrevista": None}
+            "entrevista": entrevista}
+
+
+def _explicaciones(resultado: dict) -> list[str]:
+    """Una línea por criterio con nota; si no hay, la explicación general."""
+    notas = [f"{c['criterio'].replace('_', ' ').capitalize()}: {c['nota']}"
+             for c in resultado.get("criterios", []) if c.get("nota")]
+    return notas or [resultado.get("explicacion", "")]
+
+
+def _notificar(session: Session, notificador, ev: Evaluacion, veredicto: Veredicto) -> dict | None:
+    """Correo/agenda tras confirmar la decisión. Un fallo de Google solo se audita."""
+    if veredicto == Veredicto.REVISION_HUMANA:
+        return None
+    if not notificador.habilitado:
+        _auditar(session, "notificacion_omitida", ev.id, {"veredicto": veredicto.value})
+        session.commit()
+        return None
+    post = session.get(Postulacion, ev.postulacion_id)
+    cand = session.get(Candidato, post.candidato_id)
+    vacante = next((v.titulo for v in _vacantes() if v.id == post.vacante_id), post.vacante_id)
+    entrevista = None
+    try:
+        if veredicto == Veredicto.ENTREVISTA:
+            inicio = siguiente_horario(datetime.now(timezone.utc))
+            entrevista = notificador.crear_entrevista(
+                cand.email, f"Entrevista: {vacante}", f"Entrevista con {cand.nombre}", inicio)
+            asunto, cuerpo = correo_invitacion(
+                cand.nombre, vacante, entrevista["inicio"], entrevista["meet_link"])
+        else:
+            asunto, cuerpo = correo_no_continua(cand.nombre, vacante, _explicaciones(ev.resultado))
+        notificador.enviar_correo(cand.email, asunto, cuerpo)
+        _auditar(session, "notificacion_enviada", ev.id, {"veredicto": veredicto.value})
+    except Exception as exc:
+        session.rollback()
+        _auditar(session, "notificacion_fallida", ev.id,
+                 {"veredicto": veredicto.value, "error": type(exc).__name__})
+    session.commit()
+    return ({"inicio": entrevista["inicio"], "meet_link": entrevista["meet_link"]}
+            if entrevista else None)
+
+
+def _vacantes():
+    from app.main import _cargar_vacantes  # import tardío: main importa este módulo
+    return _cargar_vacantes()
