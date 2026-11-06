@@ -1,5 +1,7 @@
 """Rutas de postulaciones y evaluaciones (docs/api.md)."""
 import json
+import os
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,19 +12,29 @@ from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlmodel import Session, select
 
+from app.agent import PdfInvalidoError, PdfSinTextoError
+from app.correos import correo_invitacion, correo_no_continua
 from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_session
 from app.evaluador import Evaluador, get_evaluador
+from app.google_apis import siguiente_horario
 from app.models import Veredicto
+from app.notificador import get_notificador
 
 router = APIRouter()
 
 MAX_PDF_BYTES = 5 * 1024 * 1024
 EMAIL_RE = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"  # patrón simple; evita sumar email-validator
+ERRORES_PDF = {
+    PdfInvalidoError: (415, "El archivo no es un PDF válido"),
+    PdfSinTextoError: (422, "No pudimos leer texto en tu PDF; ¿es un escaneo? "
+                            "Súbelo con texto seleccionable"),
+}
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 
 
 def get_uploads_dir() -> Path:
-    return UPLOADS_DIR
+    # Lectura perezosa: pruebas y e2e pueden cambiar la variable sin reimportar.
+    return Path(os.environ["UPLOADS_DIR"]) if os.environ.get("UPLOADS_DIR") else UPLOADS_DIR
 
 
 def _auditar(session: Session, evento: str, evaluacion_id: int | None, detalle: dict) -> None:
@@ -102,10 +114,12 @@ def crear_postulacion(
     try:
         perfil, resultado = evaluador(contenido, vacante)
     except Exception as exc:
+        status, detail = ERRORES_PDF.get(
+            type(exc), (502, "No se pudo evaluar la hoja de vida"))
         _auditar(session, "evaluacion_fallida", None,
-                 {"vacante_id": vacante_id, "error": type(exc).__name__})
+                 {"vacante_id": vacante_id, "error": type(exc).__name__, "status": status})
         session.commit()
-        raise HTTPException(502, "No se pudo evaluar la hoja de vida") from exc
+        raise HTTPException(status, detail) from exc
 
     ev = _persistir(session, uploads, contenido, vacante_id, nombre, email, perfil, resultado)
     return {"evaluacion_id": ev.id, "estado": ev.estado}
@@ -151,7 +165,8 @@ class DecisionIn(BaseModel):
 
 
 @router.post("/evaluaciones/{evaluacion_id}/decision")
-def decidir(evaluacion_id: int, body: DecisionIn, session: Session = Depends(get_session)):
+def decidir(evaluacion_id: int, body: DecisionIn, session: Session = Depends(get_session),
+            notificador=Depends(get_notificador)):
     ev = session.get(Evaluacion, evaluacion_id)
     if ev is None:
         raise HTTPException(404, "Evaluación no encontrada")
@@ -172,6 +187,68 @@ def decidir(evaluacion_id: int, body: DecisionIn, session: Session = Depends(get
              {"veredicto_ia": ev.veredicto_ia, "veredicto_final": body.veredicto.value,
               "motivo": body.motivo, "reclutador": body.reclutador})
     session.commit()
-    # Sprint actual: no se envían correos ni se agenda; `entrevista` queda en null.
+    entrevista = _notificar(session, notificador, ev, body.veredicto, body.motivo)
     return {"id": evaluacion_id, "veredicto_final": body.veredicto.value, "estado": "decidida",
-            "entrevista": None}
+            "entrevista": entrevista}
+
+
+SIN_DETALLE = "Tu perfil no se ajustó a los requisitos de esta vacante en este momento."
+CIFRAS_RE = re.compile(r"\d+(?:[.,]\d+)?\s*%?")
+
+
+def _explicaciones(resultado: dict, contradice_ia: bool, motivo: str | None) -> list[str]:
+    """Una línea por criterio faltante, sin cifras; si el reclutador contradijo a la IA, su motivo."""
+    if contradice_ia and (motivo or "").strip():
+        return [motivo.strip()]
+    lineas = []
+    for c in resultado.get("criterios", []):
+        nota = CIFRAS_RE.sub("", c.get("nota") or "").strip()
+        if c.get("faltantes") and nota:
+            lineas.append(f"{c['criterio'].replace('_', ' ').capitalize()}: {nota}")
+    return lineas or [SIN_DETALLE]
+
+
+def _notificar(session: Session, notificador, ev: Evaluacion, veredicto: Veredicto,
+               motivo: str | None = None) -> dict | None:
+    """Correo/agenda tras confirmar la decisión. Un fallo de Google solo se audita."""
+    if veredicto == Veredicto.REVISION_HUMANA:
+        return None
+    if not notificador.habilitado:
+        _auditar(session, "notificacion_omitida", ev.id, {"veredicto": veredicto.value})
+        session.commit()
+        return None
+    post = session.get(Postulacion, ev.postulacion_id)
+    cand = session.get(Candidato, post.candidato_id)
+    vacante = next((v.titulo for v in _vacantes() if v.id == post.vacante_id), post.vacante_id)
+    entrevista = None
+    paso = "evento"
+    try:
+        if veredicto == Veredicto.ENTREVISTA:
+            inicio = siguiente_horario(datetime.now(timezone.utc))
+            entrevista = notificador.crear_entrevista(
+                cand.email, f"Entrevista: {vacante}", f"Entrevista con {cand.nombre}", inicio)
+            paso = "meet"
+            if not entrevista.get("meet_link"):
+                raise ValueError("El evento no trae enlace de Meet")
+            asunto, cuerpo = correo_invitacion(
+                cand.nombre, vacante, entrevista["inicio"], entrevista["meet_link"])
+        else:
+            paso = "plantilla"
+            asunto, cuerpo = correo_no_continua(cand.nombre, vacante, _explicaciones(
+                ev.resultado, veredicto.value != ev.veredicto_ia, motivo))
+        paso = "correo"
+        notificador.enviar_correo(cand.email, asunto, cuerpo)
+        _auditar(session, "notificacion_enviada", ev.id, {"veredicto": veredicto.value})
+    except Exception as exc:
+        session.rollback()
+        _auditar(session, "notificacion_fallida", ev.id, {
+            "veredicto": veredicto.value, "error": type(exc).__name__, "paso": paso,
+            "event_id": (entrevista or {}).get("event_id")})
+    session.commit()
+    return ({"inicio": entrevista["inicio"], "meet_link": entrevista.get("meet_link")}
+            if entrevista else None)
+
+
+def _vacantes():
+    from app.main import _cargar_vacantes  # import tardío: main importa este módulo
+    return _cargar_vacantes()

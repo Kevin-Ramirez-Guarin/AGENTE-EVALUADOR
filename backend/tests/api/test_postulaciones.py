@@ -1,8 +1,10 @@
 import json
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from app.agent import PdfInvalidoError, PdfSinTextoError
 from app.db import Auditoria, Candidato, Evaluacion, Postulacion, get_session
 from app.evaluador import get_evaluador
 from app.main import app
@@ -107,6 +109,35 @@ def test_evaluador_falla_502_y_audita(client, engine):
         a = s.exec(select(Auditoria)).one()
     assert a.evento == "evaluacion_fallida"
     assert "backend-jr" in a.detalle
+
+
+@pytest.mark.parametrize("exc,status", [
+    (PdfInvalidoError("corrupto"), 415),
+    (PdfSinTextoError("escaneo"), 422),
+    (RuntimeError("LLM caído"), 502),
+])
+def test_errores_de_pdf_mapean_a_4xx_sin_guardar(client, engine, uploads, exc, status):
+    def _ev(pdf, vacante):
+        raise exc
+
+    app.dependency_overrides[get_evaluador] = lambda: _ev
+    r = postular(client)
+    assert r.status_code == status
+    if status == 422:
+        assert "texto seleccionable" in r.json()["detail"]
+    with Session(engine) as s:
+        assert s.exec(select(Auditoria)).one().evento == "evaluacion_fallida"
+        assert s.exec(select(Evaluacion)).all() == []
+    assert list(uploads.iterdir()) == []
+
+
+def test_uploads_dir_se_lee_perezosamente_del_entorno(monkeypatch, tmp_path):
+    from app.routes import UPLOADS_DIR
+
+    monkeypatch.delenv("UPLOADS_DIR", raising=False)
+    assert get_uploads_dir() == UPLOADS_DIR
+    monkeypatch.setenv("UPLOADS_DIR", str(tmp_path))
+    assert get_uploads_dir() == tmp_path
 
 
 def test_fallo_de_bd_borra_pdf_y_hace_rollback(engine, uploads):

@@ -40,7 +40,7 @@ Base: `http://localhost:8000`. Todo es JSON salvo la carga del PDF. Todas las ru
 ```json
 { "evaluacion_id": 12, "estado": "pendiente_revision" }
 ```
-Errores: 404 vacante inexistente; 415 no es PDF; 413 PDF > 5 MB (o cuerpo mayor a ~5,1 MB); 422 sin consentimiento o campos inválidos (`nombre` 1-200 caracteres, `email` con formato válido y máx. 254); 502 el evaluador falló (no se guarda nada).
+Errores: 404 vacante inexistente; 415 no es PDF; 413 PDF > 5 MB (o cuerpo mayor a ~5,1 MB); 422 sin consentimiento, campos inválidos (`nombre` 1-200 caracteres, `email` con formato válido y máx. 254) o PDF sin capa de texto (escaneo; `detail`: "No pudimos leer texto en tu PDF; ¿es un escaneo? Súbelo con texto seleccionable"); 415 también si el evaluador detecta un PDF corrupto; 502 el evaluador falló por otra causa. En todos los errores del evaluador se audita y no se guarda nada.
 
 ## GET /evaluaciones  (implementada)
 Panel del reclutador, ordenado por puntaje descendente. Query opcional: `vacante_id`, `estado`, `limit` (1-200, por defecto 50) y `offset` (>= 0, por defecto 0).
@@ -102,4 +102,4 @@ Cuerpo:
 ```json
 { "id": 12, "veredicto_final": "ENTREVISTA", "estado": "decidida", "entrevista": { "inicio": "2026-11-09T10:00:00-05:00", "meet_link": "https://meet.google.com/xxx-xxxx-xxx" } }
 ```
-`entrevista` es `null` si el veredicto no es `ENTREVISTA`; en este sprint siempre es `null` (aún no se envía correo ni se agenda). `motivo` máx. 1000 caracteres y `reclutador` 1-100 (lo declara el cliente; sin autenticación por ahora). Errores: 404 evaluación inexistente; 422 falta motivo; 409 ya decidida.
+Los correos y el evento salen después de guardar la decisión: `ENTREVISTA` agenda (siguiente día hábil 10:00, 45 min, Meet) y envía invitación; `NO_CONTINUA` envía un correo con explicación breve por criterio; `REVISION_HUMANA` no envía nada. `entrevista` es `null` si el veredicto no es `ENTREVISTA`, si Google no está autorizado (auditoría `notificacion_omitida`) o si falla (la decisión se mantiene; auditoría `notificacion_fallida`). `motivo` máx. 1000 caracteres y `reclutador` 1-100 (lo declara el cliente; sin autenticación por ahora). Errores: 404 evaluación inexistente; 422 falta motivo; 409 ya decidida.
