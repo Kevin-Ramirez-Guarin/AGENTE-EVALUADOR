@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 PESO_OBLIGATORIOS = 0.7
 TOPE_KNOCKOUT = 40.0
+MAX_EVIDENCIA = 200  # caracteres de cada cita que se muestran
 UMBRAL_ENTREVISTA = 75.0
 UMBRAL_REVISION = 55.0
 ORDEN_EDUCACION = ["bachiller", "tecnico", "tecnologo", "profesional", "posgrado"]
@@ -73,6 +74,7 @@ def _cubrir(requisitos: list[str], habilidades: list[Habilidad]):
             faltantes.append(r)
         else:
             cumplidos.append(r)
+            ev = ev if len(ev) <= MAX_EVIDENCIA else ev[:MAX_EVIDENCIA - 1].rstrip() + "…"
             if ev not in evidencias:
                 evidencias.append(ev)
     return cumplidos, faltantes, evidencias
@@ -95,7 +97,7 @@ def _nivel_mcer(nivel: str) -> int:
 
 
 def _detalle(nombre, ratio, peso, cumplidos, faltantes, evidencias, nota) -> CriterioDetalle:
-    return CriterioDetalle(criterio=nombre, puntaje=round(ratio * 100, 1), peso=peso, cumplidos=cumplidos,
+    return CriterioDetalle(criterio=nombre, puntaje=ratio * 100, peso=peso, cumplidos=cumplidos,
                            faltantes=faltantes, evidencias=evidencias, nota=nota)
 
 
@@ -192,7 +194,8 @@ def evaluar(perfil: PerfilCandidato, vacante: Vacante) -> ResultadoEvaluacion:
     tecnico, cumple = _tecnico(perfil, vacante)
     criterios = [tecnico, _experiencia(perfil, vacante), _blandas(perfil, vacante),
                  _educacion(perfil, vacante), _idiomas(perfil, vacante)]
-    total = round(sum(c.puntaje * c.peso for c in criterios), 1)
+    total = round(sum(c.puntaje * c.peso for c in criterios), 1)  # ratios sin redondear; se redondea solo al mostrar
+    criterios = [c.model_copy(update={"puntaje": round(c.puntaje, 1)}) for c in criterios]
     if not cumple:
         total = min(total, TOPE_KNOCKOUT)
     veredicto = _veredicto(total)
