@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+sqlmodel
+pypdf
+langchain>=1.4
+langchain-google-genai>=4.4
+python-dotenv
+pytest
+pytest-cov
+httpx
