@@ -115,7 +115,7 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
   useEffect(() => {
     let vigente = true
     getEvaluacion(evalId).then(
-      (e) => vigente && (setEv(e), e.resultado && setVeredicto(e.resultado.veredicto_sugerido)),
+      (e) => vigente && (setEv(e), setErrorCarga(''), e.resultado && setVeredicto(e.resultado.veredicto_sugerido)),
       (e) => vigente && setErrorCarga(e instanceof ApiError && e.status === 404 ? MENSAJE_ERROR[404] : 'No pudimos cargar la evaluación. Intenta de nuevo más tarde.'),
     )
     return () => {
@@ -123,7 +123,7 @@ function DetalleEvaluacion({ evalId }: { evalId: number }) {
     }
   }, [evalId, recarga])
 
-  if (errorCarga) return <p role="alert" className="text-red-700">{errorCarga}</p>
+  if (errorCarga && !ev) return <p role="alert" className="text-red-700">{errorCarga}</p>
   if (!ev) return <p role="status">Cargando evaluación…</p>
 
   const { perfil, resultado } = ev

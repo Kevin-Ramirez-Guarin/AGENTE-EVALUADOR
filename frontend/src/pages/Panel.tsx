@@ -4,6 +4,7 @@ import { getEvaluaciones, getVacantes, type EvaluacionResumen, type Vacante } fr
 import { ESTADOS, useRefresco } from '../estados'
 
 const LIMIT = 10
+const FALLBACK = { texto: '', clase: 'bg-slate-100 text-slate-900' }
 const btn = 'rounded border border-slate-300 bg-white px-3 py-1 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-indigo-700'
 
 export function Panel() {
@@ -37,6 +38,8 @@ export function Panel() {
     setVacanteId(vacante)
     setOffset(desde)
   }
+  // Un fallo del refresco automático no reemplaza filas ya cargadas.
+  const hayError = error && !filas
   const actualizar = useCallback(() => setRecarga((n) => n + 1), [])
   useRefresco(!!filas?.some((f) => f.estado === 'en_evaluacion'), actualizar)
   const hayMas = (filas?.length ?? 0) > LIMIT
@@ -65,10 +68,10 @@ export function Panel() {
         <button type="button" className={`${btn} ml-3`} onClick={actualizar}>Actualizar</button>
       </div>
 
-      {error && <p role="alert" className="mt-4 text-red-700">No pudimos cargar las evaluaciones. Intenta de nuevo más tarde.</p>}
-      {!error && !filas && <p role="status" aria-busy="true" className="mt-4">Cargando evaluaciones…</p>}
-      {!error && filas?.length === 0 && <p className="mt-4">No hay evaluaciones para mostrar.</p>}
-      {!error && !!visibles?.length && (
+      {hayError && <p role="alert" className="mt-4 text-red-700">No pudimos cargar las evaluaciones. Intenta de nuevo más tarde.</p>}
+      {!hayError && !filas && <p role="status" aria-busy="true" className="mt-4">Cargando evaluaciones…</p>}
+      {!hayError && filas?.length === 0 && <p className="mt-4">No hay evaluaciones para mostrar.</p>}
+      {!hayError && !!visibles?.length && (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse bg-white text-left text-sm">
             <caption className="sr-only">Evaluaciones ordenadas por puntaje</caption>
@@ -90,7 +93,7 @@ export function Panel() {
                   <td className="px-3 py-2">{f.veredicto_sugerido ?? '—'}</td>
                   <td className="px-3 py-2">{f.veredicto_final ?? '—'}</td>
                   <td className="px-3 py-2">
-                    <span className={`rounded px-2 py-0.5 ${ESTADOS[f.estado].clase}`}>{ESTADOS[f.estado].texto}</span>
+                    <span className={`rounded px-2 py-0.5 ${(ESTADOS[f.estado] ?? FALLBACK).clase}`}>{(ESTADOS[f.estado] ?? { texto: f.estado }).texto}</span>
                   </td>
                 </tr>
               ))}
