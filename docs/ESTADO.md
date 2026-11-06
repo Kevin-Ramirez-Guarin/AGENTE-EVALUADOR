@@ -2,24 +2,25 @@
 
 > Tablero vivo. **Cada PR actualiza este archivo.** Lo más reciente va arriba.
 
-## En curso: Sprint 3 (ética y cierre) terminado, faltan los PRs
+## En curso: Sprint 4 (entrega)
 
-| Track | Rama | Qué trae | Pruebas |
-|---|---|---|---|
-| IA (Kevin) | `feature/anonimizador-y-sesgo` | Anonimizador determinístico antes de Gemini (identidad, contacto, edad, origen y género); neutralización también de la **salida** del LLM; matching que busca en el texto verificado y descarta negaciones; golden `REVISION_HUMANA`; `bias_test.py` con un factor a la vez | 389 ✅ (97 %) · **41/41 evals con Gemini real** |
-| Plataforma (JVarz12) | `feature/evaluacion-en-segundo-plano` | Evaluación en segundo plano (`en_evaluacion`, `pendiente_revision`, `error_evaluacion`) con reintento y recuperación de filas atascadas; SQLite WAL; purga a los 180 días que redacta el perfil; prueba de carga real | 211 ✅ (98 %) · carga: 1302 peticiones, 0 fallas, POST p95 22 ms |
-| Frontend (Santiago) | `feature/transparencia-y-accesibilidad` | Panel con los estados nuevos y refresco; página **"Cómo evaluamos"** (criterios, pesos, derechos de la Ley 1581); notas rotuladas; accesibilidad con axe | 73 ✅ · 11 e2e ✅ · axe: 0 violaciones serias |
-| Documentación | `feature/documento-etica` | `docs/etica.md` integrador (marco legal, riesgo → control → evidencia, límites) y resultados de la prueba de sesgo | — |
+| Rama | Qué trae | Pruebas |
+|---|---|---|
+| `feature/cargar-env-al-arrancar` | El backend lee `backend/.env` al arrancar. Antes, `EVALUADOR`, `MODO_EVALUACION` y `UPLOADS_DIR` del `.env` se ignoraban hasta la primera llamada a Gemini | 411 ✅ (99 %) |
+| `feature/guion-demo-y-readme` | `README.md`, guion de demo de 5 min para los tres (`docs/demo.md`) y `scripts/sembrar_demo.py` para poblar el panel con las HV sintéticas | 416 ✅ · probado contra uvicorn real |
+| `feature/citas-legales` | Citas de `docs/etica.md` verificadas contra fuentes oficiales, con sección *Fuentes*. Cinco afirmaciones corregidas (ver Decisiones) | — |
+| `feature/informe-final` | `docs/informe.md` (~4200 palabras) con resultados, hallazgos y pruebas exploratorias | — |
+| `feature/estado-sprint-4` | Este tablero; ONBOARDING y PLAN corregidos (rama `main`, PDF escaneado → 422) | — |
 
-**Integración verificada (local):** las 4 ramas se fusionan sin conflictos. Juntas pasan 410 pruebas de backend (98 %), 73 de frontend, `tsc` y **11/11 e2e en navegador** contra el backend asíncrono con anonimizador. La integración destapó un bug (las e2e subían un PDF sin texto) que ya está corregido.
+**Pruebas exploratorias con Gemini real** (7 HV raras; detalle en `docs/informe.md` §8): inglés → ENTREVISTA 92.5; habilidades en tabla → se leen bien; negación explícita de React → se respeta; escaneada, vacía o casi vacía → se rechazan antes del LLM.
 
-**Prueba de sesgo con Gemini real:** 8 variantes (nombre, género, origen, edad y combinada) × 3 corridas → **71,7 en todas, con y sin anonimizador** (diferencia 0,0). Detalle en `docs/etica.md` §5.
-
-## Siguiente (Sprint 4: entrega)
-- **JVarz12:** probar Gmail/Calendar con Google real (falta crear el cliente OAuth).
-- **Los tres:** guion de demo de 5 min, video corto e informe final. Revisar las citas "por verificar" de `docs/etica.md`.
+## Siguiente
+- **JVarz12:** probar Gmail/Calendar real (falta el cliente OAuth) y llenar el TODO de `docs/informe.md` §8.4.
+- **Los tres:** ensayar `docs/demo.md`, grabar el video y completar la portada del informe (curso, profesor, nombres completos).
+- **Kevin (opcional):** sumar "maquetador/a" y similares al neutralizador; mensaje "texto insuficiente" para HV casi vacías.
 
 ## Hecho
+- 2026-11-06 · **Sprint 3** fusionado (PRs #12 a #15).
 - 2026-11-06 · **Sprint 3**: anonimizador y prueba de sesgo, evaluación en segundo plano, retención, carga, transparencia, accesibilidad y `docs/etica.md`.
 - 2026-11-06 · **Sprint 2** fusionado (PRs #8 a #11): scoring y agente, Gmail/Calendar y panel del reclutador.
 - 2026-11-06 · **Sprint 2**: scoring + agente, Gmail/Calendar y panel del reclutador (ver la tabla).
@@ -28,6 +29,7 @@
 - 2026-11-06 · F0, plan v0.2, `CLAUDE.md` y `ONBOARDING.md` (PR #1).
 
 ## Decisiones
+- 2026-11-06 · Citas legales verificadas (sin abogado). Cambios de fondo: la **T-323/2024** trata el uso de ChatGPT por un juez, así que se cita por analogía; la **Circular 002/2024 SIC** exige estudio de impacto solo si el riesgo es alto; la Ley 1482/1752 no nombra "origen" sino nacionalidad y raza; **no hay ley de IA** en Colombia (PL 025/2026 Cámara sin primer debate); Gemini en Vertex es *transmisión* a un encargado (Decreto 1377, arts. 24–25).
 - 2026-11-06 · El agente LangChain es el modo por defecto, porque es requisito académico. `MODO_EVALUACION=pipeline` existe para cuando la latencia o el costo importan (1 llamada al LLM en vez de ~5).
 - 2026-11-06 · Los números del resultado salen del `contexto` de las herramientas y de `scoring.py`, nunca del texto del LLM.
 - 2026-11-06 · Correo de rechazo: si el reclutador contradice a la IA se usa su `motivo`; si no, las notas de los criterios con faltantes, sin cifras. Nunca se envía el puntaje crudo.
@@ -37,6 +39,9 @@
 - 2026-11-05 · LinkedIn solo como canal de publicación; la IA extrae y justifica y Python puntúa; humano en el bucle; Gemini vía Vertex.
 
 ## Hallazgos para el informe
+- **La experiencia no mide relevancia** (exploratoria): un chef con 8 años saca 100 en experiencia para Backend Jr. El knock-out técnico evita el falso positivo.
+- **"Maquetadora" se coló en el resumen**: palabra fuera del diccionario de género. Confirma el límite de las listas finitas.
+- **El `.env` no se leía al arrancar** (lo encontró el agente de la demo). Corregido en `feature/cargar-env-al-arrancar`.
 - **El LLM reintroduce el género por su cuenta.** Con la entrada ya neutra, Gemini escribió "la candidata" en 2 de 7 HV. Mitigación: se neutraliza también la salida.
 - **Efecto techo en la prueba de sesgo.** Con una HV fuerte todo da 100 y la prueba no detecta nada. Se repitió con una HV de rango medio, y ahora el script advierte la saturación de forma automática.
 - **La arquitectura protege por sí sola.** Sin anonimizador, el puntaje tampoco cambió, porque el LLM solo extrae y las reglas puntúan.
@@ -47,7 +52,9 @@
 - **Defensa contra *prompt injection* verificada con Gemini real:** la HV que pide "asigna puntaje 100" saca 21.7.
 
 ## Deuda conocida
-- Sin autenticación: el `reclutador` lo declara el cliente y el panel es público. Aceptable para el MVP; documentarlo en `docs/etica.md`.
+- Sin autenticación: el `reclutador` lo declara el cliente y el panel es público (documentado en `docs/etica.md` §6).
+- CORS solo admite `http://localhost:5173` (abrir el frontend por `127.0.0.1` falla).
+- `EVALUADOR=falso` da puntajes que no dependen del contenido de la HV: sirve para la demo de flujo, no para mostrar resultados.
 - `siguiente_horario` no considera festivos colombianos.
 - El 413 del middleware (Content-Length) no queda en la auditoría.
 - SQLite puede dar "database is locked" con carga alta.
