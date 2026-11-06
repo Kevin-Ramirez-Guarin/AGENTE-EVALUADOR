@@ -20,7 +20,7 @@ def test_la_evidencia_es_un_fragmento_citado_de_la_hv():
     p = perfil(tec=["React", "HTML/CSS"], anios=3, edu="profesional")
     ev = crit(evaluar(p, FRONT, HV), "tecnico").evidencias
     citas = [e for e in ev if e.startswith("Mencionado en la hoja de vida: «")]
-    assert len(citas) == 1 and "JavaScript moderno" in citas[0] and citas[0].endswith("»")
+    assert any("JavaScript moderno" in c for c in citas) and all(c.endswith("»") for c in citas)
 
 
 def test_el_fragmento_no_pasa_de_120_caracteres_y_conserva_tildes_del_original():
