@@ -3,9 +3,13 @@ import pytest
 from app import config
 
 
+@pytest.fixture(autouse=True)
+def _sin_dotenv(monkeypatch):
+    monkeypatch.setattr(config, "load_dotenv", lambda *a, **k: None)
+
+
 def test_sin_api_key_da_error_claro(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.setattr(config, "load_dotenv", lambda *a, **k: None)
     with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
         config.get_api_key()
 
