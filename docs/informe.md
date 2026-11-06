@@ -269,7 +269,22 @@ Con *mocks*, las pruebas verifican que al aprobar `ENTREVISTA` se crea el evento
 
 ### Pruebas exploratorias con el agente
 
-<!-- TODO orquestador: hallazgos de HV raras -->
+El orquestador pasó siete hojas de vida "raras" por el agente real (Gemini `gemini-3.1-flash-lite`, modo agente) para buscar comportamientos que el golden set no cubre. Todas son sintéticas.
+
+| Caso | Vacante | Resultado | Lectura |
+|---|---|---|---|
+| HV en inglés | Backend Jr | ENTREVISTA, 92.5 | El agente extrae bien en otro idioma; las evidencias siguen siendo literales. |
+| Habilidades en una tabla | Analista de datos | NO_CONTINUA, 40 (knock-out) | La tabla se lee bien (SQL, Python, Power BI, Excel). El knock-out es correcto: no menciona "Estadística básica", que es obligatoria. |
+| Cambio de carrera (chef con un curso de Python) | Backend Jr | NO_CONTINUA, 40 | Veredicto correcto, pero **experiencia = 100**: los 8 años en cocina cuentan igual que 8 años de desarrollo. |
+| "Ana. Busco trabajo. Responsable y puntual." | Soporte | Rechazada antes del LLM | Correcto no evaluarla, pero el mensaje dice "podría estar escaneado", y en realidad es texto insuficiente. |
+| Negación explícita ("No tengo experiencia con React") | Frontend React | NO_CONTINUA, 40 | El filtro de negaciones funciona: React queda como faltante. |
+| HV escaneada (imagen) | Soporte | Rechazada con mensaje claro | El MVP no hace OCR; se pide un PDF con texto. |
+| PDF sin texto | Soporte | Rechazado (422) | Esperado. |
+
+**Hallazgos:**
+1. **La experiencia no mide relevancia.** El criterio cuenta años totales, no años en el área. No cambia el veredicto en este caso (el knock-out técnico manda), pero infla el puntaje de quien cambia de carrera. Trabajo futuro: contar solo la experiencia cuyo cargo o evidencia coincide con las habilidades de la vacante.
+2. **El género se coló por una palabra fuera de la lista.** El resumen dijo "maquetadora web": el neutralizador no tiene "maquetador/a" en su diccionario. Confirma con un caso real el límite declarado en `docs/etica.md` §6 (listas finitas).
+3. **Mensaje de error impreciso** para HV con muy poco texto: dice "escaneado" cuando el problema es la longitud.
 
 ## 9. Eje ético
 
@@ -314,6 +329,7 @@ Estos hallazgos salieron de las pruebas con Gemini real y de la revisión de có
 |---|---|---|
 | **Sin autenticación:** el panel es público y el `reclutador` lo declara el cliente. | La auditoría se puede suplantar. | Inicio de sesión con roles; firmar la decisión con la identidad verificada. |
 | **Anonimizador con listas finitas** (roles con género, ciudades, países). El nombre solo se quita si llega en `identidad`. | Un término fuera de la lista sobrevive; datos indirectos (colegio, barrio) pueden revelar origen o clase. | Ampliar los diccionarios con los evals; evaluar un reconocedor de entidades como segunda capa. |
+| **La experiencia no mide relevancia:** cuenta años totales, no años en el área (pruebas exploratorias). | Infla el puntaje de quien cambia de carrera, aunque el knock-out técnico sigue mandando. | Contar solo la experiencia cuya evidencia coincide con las habilidades de la vacante. |
 | **LLM no determinístico.** | La extracción varía entre corridas (hallazgo 5). | Más sinónimos o *embeddings* para el *matching*; varias corridas y votación en casos límite. |
 | **Prueba de sesgo acotada:** 1 HV base, 8 variantes, 3 corridas. | No permite una conclusión estadística. | Un banco amplio de HV y variantes, y medir también el lenguaje del texto libre. |
 | **Carga medida con el evaluador simulado y 20 usuarios.** | No mide cuotas ni latencia de Gemini. Unas 40 evaluaciones simultáneas saturarían el pool de hilos. | Una cola de trabajos con reintentos; repetir la carga con el agente real. |
