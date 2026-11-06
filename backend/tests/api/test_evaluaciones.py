@@ -58,7 +58,7 @@ def test_detalle(client):
     assert r.status_code == 200
     d = r.json()
     assert set(d) == {"id", "vacante_id", "candidato", "perfil", "resultado",
-                      "veredicto_final", "estado"}
+                      "veredicto_final", "estado", "error"}
     assert "puntaje_total" in d["resultado"] and "resumen" in d["perfil"]
     assert "email" not in str(d)
 

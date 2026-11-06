@@ -31,12 +31,16 @@ class Postulacion(SQLModel, table=True):
 class Evaluacion(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     postulacion_id: int = Field(foreign_key="postulacion.id")
-    puntaje_total: float = Field(index=True)
-    perfil: dict = Field(sa_column=Column(JSON))
-    resultado: dict = Field(sa_column=Column(JSON))
-    veredicto_ia: str
+    # Nulos mientras la evaluación está en segundo plano (o si falló).
+    puntaje_total: float | None = Field(default=None, index=True)
+    perfil: dict | None = Field(default=None, sa_column=Column(JSON(none_as_null=True)))
+    resultado: dict | None = Field(default=None, sa_column=Column(JSON(none_as_null=True)))
+    veredicto_ia: str | None = None
     veredicto_final: str | None = None
-    estado: str = "pendiente_revision"
+    # en_evaluacion -> pendiente_revision | error_evaluacion; pendiente_revision -> decidida.
+    # Sin migración: la BD SQLite se crea nueva en cada demo.
+    estado: str = "en_evaluacion"
+    error: str | None = None
     decidido_por: str | None = None
     motivo: str | None = None
 
