@@ -2,7 +2,8 @@ import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import get_engine
@@ -23,6 +24,19 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
 
 def _cargar_vacantes() -> list[Vacante]:
     return [Vacante(**v) for v in json.loads(VACANTES_PATH.read_text(encoding="utf-8"))]
+
+
+MAX_BODY_BYTES = 5 * 1024 * 1024 + 100 * 1024  # PDF de 5 MB + margen del multipart
+
+
+@app.middleware("http")
+async def limitar_cuerpo_postulaciones(request: Request, call_next):
+    """Corta con 413 antes de que Starlette parsee un multipart gigante."""
+    if request.url.path == "/postulaciones":
+        largo = request.headers.get("content-length", "")
+        if largo.isdigit() and int(largo) > MAX_BODY_BYTES:
+            return JSONResponse({"detail": "El PDF supera 5 MB"}, status_code=413)
+    return await call_next(request)
 
 
 @app.get("/health")
