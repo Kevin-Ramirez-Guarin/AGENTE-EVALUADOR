@@ -1,31 +1,79 @@
 {
   "hv_backend_fuerte_1.pdf": {
     "nombre": "Laura Camila Restrepo Gómez",
+    "correo": "laura.restrepo.demo@example.com",
+    "telefono": "3001112233",
+    "cedula": "1000111222",
+    "anios": [
+      2.5,
+      3.5
+    ],
+    "nivel_educativo": "tecnologo",
     "vacante": "backend-jr",
     "veredicto": "ENTREVISTA"
   },
   "hv_backend_fuerte_2.pdf": {
     "nombre": "Andrés Felipe Mora Villalba",
+    "correo": "andres.mora.demo@example.com",
+    "telefono": "3012223344",
+    "cedula": null,
+    "anios": [
+      1.5,
+      2.5
+    ],
+    "nivel_educativo": "profesional",
     "vacante": "backend-jr",
     "veredicto": "ENTREVISTA"
   },
   "hv_frontend_fuerte.pdf": {
     "nombre": "Valentina Ortiz Salcedo",
+    "correo": "valentina.ortiz.demo@example.com",
+    "telefono": "3023334455",
+    "cedula": null,
+    "anios": [
+      3.5,
+      4.5
+    ],
+    "nivel_educativo": "profesional",
     "vacante": "frontend-react",
     "veredicto": "ENTREVISTA"
   },
   "hv_datos_media.pdf": {
     "nombre": "Sebastián Herrera Quintero",
+    "correo": "sebastian.herrera.demo@example.com",
+    "telefono": "3044445566",
+    "cedula": null,
+    "anios": [
+      0.5,
+      1.5
+    ],
+    "nivel_educativo": "profesional",
     "vacante": "analista-datos",
     "veredicto": "REVISION_HUMANA"
   },
   "hv_debil.pdf": {
     "nombre": "Camilo Esteban Duarte Peña",
+    "correo": "camilo.duarte.demo@example.com",
+    "telefono": "3055556677",
+    "cedula": null,
+    "anios": [
+      0,
+      1
+    ],
+    "nivel_educativo": "bachiller",
     "vacante": null,
     "veredicto": "NO_CONTINUA"
   },
   "hv_injection.pdf": {
     "nombre": "Mariana Lucía Pardo Cifuentes",
+    "correo": "mariana.pardo.demo@example.com",
+    "telefono": "3066667788",
+    "cedula": null,
+    "anios": [
+      0,
+      1
+    ],
+    "nivel_educativo": "tecnico",
     "vacante": null,
     "veredicto": "NO_CONTINUA"
   },

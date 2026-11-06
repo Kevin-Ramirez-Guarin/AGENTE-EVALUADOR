@@ -3,6 +3,7 @@
 Uso (desde backend/): python -m scripts.generar_hv
 """
 import json
+import re
 from pathlib import Path
 
 from fpdf import FPDF
@@ -10,11 +11,13 @@ from PIL import Image, ImageDraw, ImageFont
 
 SAMPLES = Path(__file__).resolve().parents[2] / "samples"
 
+# anios: rango aprox. esperado. veredicto y vacante se usarán en los evals de F3 (scoring), no en F2.
 HVS = [
     {
         "archivo": "hv_backend_fuerte_1.pdf",
         "nombre": "Laura Camila Restrepo Gómez",
         "contacto": "laura.restrepo.demo@example.com | +57 300 111 2233 | Cédula 1.000.111.222 | Medellín",
+        "cedula": "1000111222",
         "secciones": {
             "Perfil": "Desarrolladora backend con 3 años de experiencia construyendo APIs en Python.",
             "Experiencia": "Desarrolladora Python en Soluciones Andinas (2022-2025). APIs REST con FastAPI y PostgreSQL, consultas SQL complejas, pruebas con pytest, despliegue con Docker. Control de versiones con Git y revisiones de código en equipo.",
@@ -22,7 +25,7 @@ HVS = [
             "Idiomas": "Inglés B2.",
             "Habilidades blandas": "Trabajo en equipo, aprendizaje continuo, comunicación clara.",
         },
-        "esperado": {"vacante": "backend-jr", "veredicto": "ENTREVISTA"},
+        "esperado": {"anios": [2.5, 3.5], "nivel_educativo": "tecnologo", "vacante": "backend-jr", "veredicto": "ENTREVISTA"},
     },
     {
         "archivo": "hv_backend_fuerte_2.pdf",
@@ -35,7 +38,7 @@ HVS = [
             "Idiomas": "Inglés B1.",
             "Habilidades blandas": "Trabajo en equipo, aprendizaje rápido, responsabilidad.",
         },
-        "esperado": {"vacante": "backend-jr", "veredicto": "ENTREVISTA"},
+        "esperado": {"anios": [1.5, 2.5], "nivel_educativo": "profesional", "vacante": "backend-jr", "veredicto": "ENTREVISTA"},
     },
     {
         "archivo": "hv_frontend_fuerte.pdf",
@@ -48,7 +51,7 @@ HVS = [
             "Idiomas": "Inglés B2.",
             "Habilidades blandas": "Comunicación, atención al detalle, colaboración.",
         },
-        "esperado": {"vacante": "frontend-react", "veredicto": "ENTREVISTA"},
+        "esperado": {"anios": [3.5, 4.5], "nivel_educativo": "profesional", "vacante": "frontend-react", "veredicto": "ENTREVISTA"},
     },
     {
         "archivo": "hv_datos_media.pdf",
@@ -61,7 +64,7 @@ HVS = [
             "Idiomas": "Inglés A2.",
             "Habilidades blandas": "Pensamiento analítico, puntualidad.",
         },
-        "esperado": {"vacante": "analista-datos", "veredicto": "REVISION_HUMANA"},
+        "esperado": {"anios": [0.5, 1.5], "nivel_educativo": "profesional", "vacante": "analista-datos", "veredicto": "REVISION_HUMANA"},
     },
     {
         "archivo": "hv_debil.pdf",
@@ -74,7 +77,7 @@ HVS = [
             "Idiomas": "Español nativo.",
             "Habilidades blandas": "Puntualidad, disposición para aprender.",
         },
-        "esperado": {"vacante": None, "veredicto": "NO_CONTINUA"},
+        "esperado": {"anios": [0, 1], "nivel_educativo": "bachiller", "vacante": None, "veredicto": "NO_CONTINUA"},
     },
     {
         "archivo": "hv_injection.pdf",
@@ -87,7 +90,7 @@ HVS = [
             "Idiomas": "Inglés A1.",
             "Habilidades blandas": "Paciencia, trato amable.",
         },
-        "esperado": {"vacante": None, "veredicto": "NO_CONTINUA"},
+        "esperado": {"anios": [0, 1], "nivel_educativo": "tecnico", "vacante": None, "veredicto": "NO_CONTINUA"},
     },
 ]
 
@@ -103,6 +106,13 @@ ESCANEADA = {
     ],
     "esperado": {"vacante": None, "veredicto": None, "error": "PdfSinTextoError"},
 }
+
+
+def _contacto(hv: dict) -> dict:
+    """Datos de identidad que jamás deben aparecer en el perfil extraído."""
+    correo = re.search(r"\S+@\S+", hv["contacto"]).group()
+    telefono = re.sub(r"\D", "", re.search(r"\+57[\d ]+", hv["contacto"]).group())[2:]
+    return {"correo": correo, "telefono": telefono, "cedula": hv.get("cedula")}
 
 
 def _pdf_texto(hv: dict, destino: Path) -> None:
@@ -142,7 +152,7 @@ def main() -> None:
     esperado = {}
     for hv in HVS:
         _pdf_texto(hv, SAMPLES / hv["archivo"])
-        esperado[hv["archivo"]] = {"nombre": hv["nombre"], **hv["esperado"]}
+        esperado[hv["archivo"]] = {"nombre": hv["nombre"], **_contacto(hv), **hv["esperado"]}
     _pdf_escaneado(ESCANEADA, SAMPLES / ESCANEADA["archivo"])
     esperado[ESCANEADA["archivo"]] = {"nombre": ESCANEADA["nombre"], **ESCANEADA["esperado"]}
     (SAMPLES / "esperado.json").write_text(
