@@ -2,9 +2,9 @@ import { useId, type ReactNode, type SVGProps } from 'react'
 import type { EstadoEvaluacion, Veredicto } from './api'
 import { ESTADOS, VEREDICTOS } from './estados'
 
-export function Insignia({ clase, punto, children }: { clase: string; punto?: string; children: ReactNode }) {
+export function Insignia({ clase, punto, forma = 'rounded-full', children }: { clase: string; punto?: string; forma?: string; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-sm font-medium ring-1 ring-inset ${clase}`}>
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap ${forma} px-2.5 py-0.5 text-sm font-medium ring-1 ring-inset ${clase}`}>
       {punto && <span aria-hidden="true" className={`size-1.5 rounded-full ${punto}`} />}
       {children}
     </span>
@@ -19,7 +19,7 @@ export const EstadoInsignia = ({ estado }: { estado: EstadoEvaluacion }) => {
 
 export const VeredictoInsignia = ({ veredicto }: { veredicto: Veredicto }) => {
   const v = VEREDICTOS[veredicto] ?? { texto: veredicto, clase: 'bg-niebla-100 text-niebla-900 ring-niebla-300' }
-  return <Insignia clase={`rounded-md ${v.clase}`}>{v.texto}</Insignia>
+  return <Insignia clase={v.clase} forma="rounded-md">{v.texto}</Insignia>
 }
 
 export function Campo({ id, label, error, ayuda, children }: { id: string; label: string; error?: string; ayuda?: string; children: ReactNode }) {

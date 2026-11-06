@@ -26,10 +26,10 @@ const tarjeta = 'rounded-xl bg-white p-5 shadow-tarjeta ring-1 ring-niebla-200 s
 const h2 = 'text-xl font-semibold text-selva-900'
 const textoVeredicto = (v: Veredicto | null | undefined) => (v ? VEREDICTOS[v]?.texto ?? v : '—')
 
-const Lista = ({ titulo, items, icono }: { titulo: string; items: string[]; icono?: ReactNode }) =>
+const Lista = ({ titulo, items, icono, Encabezado = 'h4' }: { titulo: string; items: string[]; icono?: ReactNode; Encabezado?: 'h3' | 'h4' }) =>
   items.length === 0 ? null : (
     <div>
-      <h4 className="text-sm font-semibold text-niebla-700">{titulo}</h4>
+      <Encabezado className="text-sm font-semibold text-niebla-700">{titulo}</Encabezado>
       <ul className="mt-1.5 space-y-1 text-sm text-niebla-900">
         {items.map((i, n) => (
           <li key={n} className="flex items-start gap-1.5">
@@ -164,8 +164,8 @@ function PerfilCandidato({ p }: { p: Perfil }) {
         {idiomas && <div><dt className="text-niebla-600">Idiomas</dt><dd className="font-semibold">{idiomas}</dd></div>}
       </dl>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Lista titulo="Fortalezas" items={p.fortalezas} />
-        <Lista titulo="Debilidades" items={p.debilidades} />
+        <Lista titulo="Fortalezas" items={p.fortalezas} Encabezado="h3" />
+        <Lista titulo="Debilidades" items={p.debilidades} Encabezado="h3" />
       </div>
       <div className="grid gap-6 border-t border-niebla-200 pt-5 sm:grid-cols-2">
         <Habilidades titulo="Habilidades técnicas" items={p.habilidades_tecnicas} />

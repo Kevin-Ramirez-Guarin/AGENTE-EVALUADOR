@@ -43,8 +43,8 @@ const Chips = ({ titulo, items, estilo }: { titulo: string; items: string[]; est
     <div>
       <h4 className="text-sm font-semibold text-niebla-700">{titulo}</h4>
       <ul className="mt-2 flex flex-wrap gap-1.5">
-        {items.map((i) => (
-          <li key={i} className={`rounded-full px-3 py-1 text-sm ${estilo}`}>{i}</li>
+        {items.map((i, n) => (
+          <li key={n} className={`rounded-full px-3 py-1 text-sm ${estilo}`}>{i}</li>
         ))}
       </ul>
     </div>
@@ -60,8 +60,8 @@ export function DetallesVacante({ v, claro = false }: { v: Vacante; claro?: bool
   if (detalles.length === 0) return null
   return (
     <ul aria-label="Detalles de la vacante" className={`flex flex-wrap gap-x-5 gap-y-1.5 text-sm ${claro ? 'text-caribe-100' : 'text-niebla-600'}`}>
-      {detalles.map(({ texto, Icono }) => (
-        <li key={texto} className="flex items-center gap-1.5">
+      {detalles.map(({ texto, Icono }, n) => (
+        <li key={n} className="flex items-center gap-1.5">
           <Icono className={`size-4 shrink-0 ${claro ? 'text-caribe-300' : 'text-caribe-700'}`} />
           {texto}
         </li>

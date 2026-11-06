@@ -15,7 +15,7 @@ function Puntaje({ valor }: { valor: number | null }) {
     <span className="flex items-center gap-2.5">
       <span className="w-10 text-right font-semibold tabular-nums text-selva-900">{valor}</span>
       <span aria-hidden="true" className="h-1.5 w-14 overflow-hidden rounded-full bg-niebla-200">
-        <span className={`block h-full rounded-full ${COLOR_BANDA[bandaPuntaje(valor)]}`} style={{ width: `${valor}%` }} />
+        <span className={`block h-full rounded-full ${COLOR_BANDA[bandaPuntaje(valor)]}`} style={{ width: `${Math.min(100, Math.max(0, valor))}%` }} />
       </span>
     </span>
   )

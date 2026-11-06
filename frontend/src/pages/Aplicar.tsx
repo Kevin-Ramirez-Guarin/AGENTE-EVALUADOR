@@ -39,8 +39,8 @@ const Requisitos = ({ titulo, items }: { titulo: string; items: string[] }) =>
     <div>
       <h3 className="font-semibold text-selva-900">{titulo}</h3>
       <ul className="mt-2 space-y-1.5">
-        {items.map((i) => (
-          <li key={i} className="flex items-start gap-2 text-niebla-700">
+        {items.map((i, n) => (
+          <li key={n} className="flex items-start gap-2 text-niebla-700">
             <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-caribe-500" />
             {i}
           </li>
