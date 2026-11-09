@@ -5,9 +5,9 @@
 | | |
 |---|---|
 | Grupo | Grupo 3 |
-| Integrantes | Kevin `[completar apellidos]` (track IA / Agente) · Santiago `[completar apellidos]` (track Frontend / Experiencia) · `[completar nombre]` (JVarz12, track Plataforma / Integraciones) |
-| Curso | `[completar]` |
-| Profesor(a) | `[completar]` |
+| Integrantes | Kevin Ramirez (track IA / Agente) · Santiago Chavarria Valencia (track Frontend / Experiencia) · Jesus Andres Vargas Zerpa (track Plataforma / Integraciones) |
+| Curso | ISLPE05 - Inteligencia Artificial (Línea Prof. II) |
+| Profesor(a) | Ingrid Durley Torres |
 | Fecha | Noviembre de 2026 |
 | Repositorio | `AGENTE-EVALUADOR` (rama `main`) |
 
