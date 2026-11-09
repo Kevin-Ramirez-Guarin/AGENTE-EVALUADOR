@@ -44,7 +44,7 @@ Si Google no está autorizado, mostrar la auditoría (`docs/demo.md`, "Si Google
 
 **Kevin (8:30–9:20). En pantalla:** diagrama del README y los tres nombres.
 
-> Separar la extracción del puntaje fue la decisión más valiosa: hizo el resultado explicable, neutralizó el *prompt injection* y, como mostró el contraste sin anonimizador, impidió que la identidad llegara al número. Aprendimos que anonimizar la entrada no basta, hay que vigilar la salida; que una prueba de sesgo puede salir bien por las razones equivocadas; y que fijar los contratos primero permitió trabajar en paralelo, con 410 pruebas y 98 % de cobertura. Los límites están declarados: sin autenticación, anonimizador con listas finitas y una prueba de sesgo con una sola HV base.
+> Separar la extracción del puntaje fue la decisión más valiosa: hizo el resultado explicable, neutralizó el *prompt injection* y, como mostró el contraste sin anonimizador, impidió que la identidad llegara al número. Aprendimos que anonimizar la entrada no basta, hay que vigilar la salida; que una prueba de sesgo puede salir bien por las razones equivocadas; y que fijar los contratos primero permitió trabajar en paralelo, con 425 pruebas y 99 % de cobertura. Los límites están declarados: sin autenticación, anonimizador con listas finitas y una prueba de sesgo con una sola HV base.
 
 **JVarz12 (9:20–10:00). En pantalla:** la pregunta en texto grande.
 
