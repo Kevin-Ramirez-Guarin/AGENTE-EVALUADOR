@@ -6,6 +6,7 @@
 
 | Rama | Qué trae | Pruebas |
 |---|---|---|
+| `feature/resumen-ejecutivo-y-guion` | `docs/resumen-ejecutivo.md` (1 página, con pregunta de debate) y `docs/guion-video.md` (video de 10 min con cronometría A–D, quién habla y qué se muestra) | — |
 | `feature/cargar-env-al-arrancar` | El backend lee `backend/.env` al arrancar. Antes, `EVALUADOR`, `MODO_EVALUACION` y `UPLOADS_DIR` del `.env` se ignoraban hasta la primera llamada a Gemini | 411 ✅ (99 %) |
 | `feature/guion-demo-y-readme` | `README.md`, guion de demo de 5 min para los tres (`docs/demo.md`) y `scripts/sembrar_demo.py` para poblar el panel con las HV sintéticas | 416 ✅ · probado contra uvicorn real |
 | `feature/citas-legales` | Citas de `docs/etica.md` verificadas contra fuentes oficiales, con sección *Fuentes*. Cinco afirmaciones corregidas (ver Decisiones) | — |

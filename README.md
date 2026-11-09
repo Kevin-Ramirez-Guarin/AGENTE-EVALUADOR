@@ -16,6 +16,8 @@ El eje ético es parte del producto, no un anexo: evaluación ciega (se anonimiz
 | [`docs/api.md`](docs/api.md) | Contrato de la API con ejemplos |
 | [`docs/etica.md`](docs/etica.md) | Marco legal, riesgo → control → evidencia y resultados de sesgo |
 | [`docs/demo.md`](docs/demo.md) | Guion de la demo de 5 minutos |
+| [`docs/resumen-ejecutivo.md`](docs/resumen-ejecutivo.md) | Resumen ejecutivo de una página con la pregunta de debate |
+| [`docs/guion-video.md`](docs/guion-video.md) | Guion del video de 10 minutos: bloques A–D, quién habla y qué se muestra |
 | [`CLAUDE.md`](CLAUDE.md) | Reglas de trabajo (git, TDD, datos) |
 
 ## Arranque rápido
