@@ -17,7 +17,7 @@
 
 ## Siguiente
 - **JVarz12:** reautorizar Google el día antes de la demo (`python -m scripts.autorizar_google`; el token de prueba vence a los 7 días).
-- **Los tres:** ensayar `docs/demo.md`, grabar el video y completar la portada del informe (curso, profesor, nombres completos).
+- **Los tres:** ensayar `docs/demo.md`, grabar el video. La portada del informe y el resumen ya tienen nombres, curso y profesora.
 - **Kevin (opcional):** sumar "maquetador/a" y similares al neutralizador; mensaje "texto insuficiente" para HV casi vacías.
 
 ## Hecho

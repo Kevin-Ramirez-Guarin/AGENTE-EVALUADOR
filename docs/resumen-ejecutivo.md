@@ -1,6 +1,6 @@
 # Resumen ejecutivo — Agente evaluador para selección laboral
 
-**Grupo 3** · [Nombre completo] (Kevin, IA), [Nombre completo] (Santiago, Frontend), [Nombre completo] (JVarz12, Plataforma) · [Curso] · [Profesor]
+**Grupo 3** · Kevin Ramirez (IA), Santiago Chavarria Valencia (Frontend), Jesus Andres Vargas Zerpa (Plataforma) · ISLPE05 - Inteligencia Artificial (Línea Prof. II) · Profesora Ingrid Durley Torres
 
 ## El problema
 
