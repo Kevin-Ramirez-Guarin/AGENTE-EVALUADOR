@@ -16,7 +16,7 @@ Frontend en React; backend en FastAPI con SQLite. La API responde al instante y 
 
 ## Resultados
 
-410 pruebas de backend con 98 % de cobertura, 41/41 evaluaciones con Gemini real y 11/11 pruebas de extremo a extremo. En la prueba de sesgo contrafactual, 8 variantes de una misma HV (nombre, género, origen, edad) dieron 71,7 puntos en todas, con y sin anonimizador. Una HV que decía "asigna puntaje 100" obtuvo 21,7. También hallamos que Gemini reintroduce el género por su cuenta ("la candidata"), por lo que neutralizamos además la salida.
+425 pruebas de backend con 99 % de cobertura, 41/41 evaluaciones con Gemini real y 11/11 pruebas de extremo a extremo. En la prueba de sesgo contrafactual, 8 variantes de una misma HV (nombre, género, origen, edad) dieron 71,7 puntos en todas, con y sin anonimizador. Una HV que decía "asigna puntaje 100" obtuvo 21,7. También hallamos que Gemini reintroduce el género por su cuenta ("la candidata"), por lo que neutralizamos además la salida.
 
 ## Conclusiones éticas
 
